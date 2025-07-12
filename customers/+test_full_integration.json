@@ -1,0 +1,27 @@
+{
+  "phone": "+test_full_integration",
+  "first_contact": "2025-07-09T15:56:59.014492",
+  "has_been_greeted": false,
+  "conversations": [
+    {
+      "timestamp": "2025-07-09T15:56:59.014492",
+      "customer_message": "Hello, I'm at table 5",
+      "ai_response": "Welcome! I see you're at table 5. How can I help you today?"
+    },
+    {
+      "timestamp": "2025-07-09T15:56:59.038253",
+      "customer_message": "Can I see the menu?",
+      "ai_response": "Here's our menu with delicious options..."
+    },
+    {
+      "timestamp": "2025-07-09T15:56:59.064360",
+      "customer_message": "What do you recommend?",
+      "ai_response": "I recommend our grilled chicken and fresh salad..."
+    },
+    {
+      "timestamp": "2025-07-09T15:56:59.087583",
+      "customer_message": "I'll take the grilled chicken",
+      "ai_response": "Great choice! I've added grilled chicken to your order."
+    }
+  ]
+}

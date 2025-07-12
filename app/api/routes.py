@@ -3,13 +3,127 @@ from flask_login import current_user, login_required
 from app.api import bp
 from app.models import MenuItem, Category, Order, OrderItem, User, Table, Service, ServiceRequest, TableSession
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 
 @bp.route('/health')
 def health():
     """API health check"""
     return jsonify({'status': 'healthy', 'message': 'Restaurant API is running'})
+
+@bp.route('/categories')
+def get_categories():
+    """Get all menu categories"""
+    try:
+        categories = Category.query.filter_by(is_active=True).order_by(Category.display_order).all()
+        category_list = []
+
+        for category in categories:
+            category_list.append({
+                'id': category.category_id,
+                'name': category.name,
+                'description': category.description,
+                'display_order': category.display_order,
+                'is_active': category.is_active
+            })
+
+        return jsonify({
+            'status': 'success',
+            'data': category_list
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/customers/phone/<phone>')
+def get_customer_by_phone(phone):
+    """Get customer by phone number (supports n8n integration)"""
+    try:
+        # Clean phone number (handle both regular and WhatsApp formats)
+        clean_phone = phone.replace('@c.us', '').replace('+', '').replace('-', '').replace(' ', '')
+
+        customer = User.query.filter_by(phone=clean_phone, role='customer').first()
+
+        if customer:
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'id': customer.user_id,
+                    'name': customer.name,
+                    'email': customer.email,
+                    'phone': customer.phone,
+                    'role': customer.role,
+                    'is_active': customer.is_active
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/customers', methods=['POST'])
+def create_customer():
+    """Create new customer"""
+    try:
+        data = request.get_json()
+
+        if not data or not data.get('name') or not data.get('phone'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Name and phone are required'
+            }), 400
+
+        # Clean phone number
+        clean_phone = data['phone'].replace('+', '').replace('-', '').replace(' ', '')
+
+        # Check if customer already exists
+        existing_customer = User.query.filter_by(phone=clean_phone, role='customer').first()
+        if existing_customer:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer with this phone number already exists'
+            }), 409
+
+        # Create new customer
+        customer = User(
+            name=data['name'],
+            email=data.get('email'),
+            phone=clean_phone,
+            password_hash='whatsapp_customer',  # Placeholder for WhatsApp customers
+            role='customer',
+            is_active=True
+        )
+
+        db.session.add(customer)
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'id': customer.user_id,
+                'name': customer.name,
+                'email': customer.email,
+                'phone': customer.phone,
+                'role': customer.role,
+                'is_active': customer.is_active
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @bp.route('/menu-items')
 def get_menu_items():
@@ -817,3 +931,820 @@ def table_session_api():
                 'success': False,
                 'message': f'Error managing session: {str(e)}'
             }), 500
+
+# WhatsApp Bot Integration Endpoints
+
+@bp.route('/orders/whatsapp-legacy', methods=['GET', 'POST'])
+def handle_orders_legacy():
+    """Handle order operations for WhatsApp bot"""
+
+    if request.method == 'GET':
+        # Get orders for a customer
+        customer_id = request.args.get('customer_id', type=int)
+        limit = request.args.get('limit', 10, type=int)
+
+        if not customer_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer ID is required'
+            }), 400
+
+        try:
+            orders = Order.query.filter_by(user_id=customer_id).order_by(
+                Order.order_time.desc()
+            ).limit(limit).all()
+
+            order_list = []
+            for order in orders:
+                order_items = []
+                for item in order.order_items:
+                    order_items.append({
+                        'id': item.item_id,
+                        'name': item.menu_item.name,
+                        'quantity': item.quantity,
+                        'unit_price': float(item.unit_price),
+                        'note': item.note
+                    })
+
+                order_list.append({
+                    'order_id': order.order_id,
+                    'customer_id': order.user_id,
+                    'table_id': order.table_id,
+                    'status': order.status,
+                    'total_amount': float(order.total_amount),
+                    'notes': order.notes,
+                    'estimated_time': order.estimated_time,
+                    'order_time': order.order_time.isoformat(),
+                    'items': order_items
+                })
+
+            return jsonify({
+                'status': 'success',
+                'data': order_list
+            })
+
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 500
+
+    elif request.method == 'POST':
+        # Create new order
+        try:
+            data = request.get_json()
+
+            if not data or not data.get('customer_id') or not data.get('items'):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Customer ID and items are required'
+                }), 400
+
+            # Create order
+            order = Order(
+                user_id=data['customer_id'],
+                table_id=data.get('table_id'),
+                status='new',
+                notes=data.get('notes', ''),
+                estimated_time=25  # Default 25 minutes
+            )
+
+            db.session.add(order)
+            db.session.flush()  # Get order ID
+
+            # Add order items
+            total_amount = 0
+            for item_data in data['items']:
+                menu_item = MenuItem.query.get(item_data['item_id'])
+                if not menu_item:
+                    db.session.rollback()
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'Menu item {item_data["item_id"]} not found'
+                    }), 400
+
+                order_item = OrderItem(
+                    order_id=order.order_id,
+                    item_id=item_data['item_id'],
+                    quantity=item_data['quantity'],
+                    unit_price=menu_item.price,
+                    note=item_data.get('note', '')
+                )
+
+                db.session.add(order_item)
+                total_amount += float(menu_item.price) * item_data['quantity']
+
+            order.total_amount = total_amount
+            db.session.commit()
+
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'id': order.order_id,
+                    'customer_id': order.user_id,
+                    'table_id': order.table_id,
+                    'status': order.status,
+                    'total_amount': float(order.total_amount),
+                    'estimated_time': order.estimated_time,
+                    'order_time': order.order_time.isoformat()
+                }
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 500
+
+# WhatsApp Table Session Management
+
+@bp.route('/whatsapp-sessions', methods=['POST'])
+def create_whatsapp_session():
+    """Create a secure table session for WhatsApp customer"""
+    try:
+        data = request.get_json()
+
+        if not data or not data.get('customer_phone') or not data.get('table_id'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer phone and table ID are required'
+            }), 400
+
+        customer_phone = data['customer_phone'].replace('@c.us', '').replace('+', '')
+        table_id = data['table_id']
+        session_token = data.get('session_token')
+
+        # Validate table exists
+        table = Table.query.get(table_id)
+        if not table:
+            return jsonify({
+                'status': 'error',
+                'message': 'Table not found'
+            }), 404
+
+        # Get or create customer
+        customer = User.query.filter_by(phone=customer_phone, role='customer').first()
+        if not customer:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer not found'
+            }), 404
+
+        # Check for existing active session for this table
+        existing_session = TableSession.query.filter_by(
+            table_id=table_id,
+            is_active=True
+        ).first()
+
+        if existing_session and existing_session.user_id != customer.user_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Table is already occupied by another customer'
+            }), 409
+
+        # Create or update session
+        if existing_session and existing_session.user_id == customer.user_id:
+            # Update existing session
+            existing_session.session_token = session_token
+            existing_session.started_at = datetime.utcnow()
+            table_session = existing_session
+        else:
+            # Create new session
+            table_session = TableSession(
+                table_id=table_id,
+                user_id=customer.user_id,
+                session_token=session_token,
+                device_info=request.headers.get('User-Agent', 'WhatsApp Bot'),
+                ip_address=request.remote_addr
+            )
+            db.session.add(table_session)
+
+        # Update table status
+        if table.status == 'available':
+            table.status = 'occupied'
+
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'session_id': table_session.session_id,
+                'session_token': table_session.session_token,
+                'table_id': table_session.table_id,
+                'customer_id': table_session.user_id,
+                'expires_at': (table_session.started_at + timedelta(hours=4)).isoformat()
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/whatsapp-sessions/<session_token>/validate', methods=['GET'])
+def validate_whatsapp_session(session_token):
+    """Enhanced WhatsApp session token validation with security checks"""
+    try:
+        # Security Check 1: Validate session token format
+        if not session_token or len(session_token) < 32:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid session token format'
+            }), 400
+
+        # Find active session
+        table_session = TableSession.query.filter_by(
+            session_token=session_token,
+            is_active=True
+        ).first()
+
+        if not table_session:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid or expired session'
+            }), 404
+
+        # Security Check 2: Check if session is expired (4 hours)
+        session_age = datetime.utcnow() - table_session.started_at
+        if session_age > timedelta(hours=4):
+            table_session.is_active = False
+            db.session.commit()
+            return jsonify({
+                'status': 'error',
+                'message': 'Session expired'
+            }), 401
+
+        # Security Check 3: Rate limiting - check for too many validation requests
+        # (In production, implement proper rate limiting with Redis)
+
+        # Security Check 4: IP address validation (optional)
+        current_ip = request.remote_addr
+        if table_session.ip_address and table_session.ip_address != current_ip:
+            # Log but don't block (mobile networks change IPs)
+            print(f"IP change detected for session {session_token}: {table_session.ip_address} -> {current_ip}")
+
+        # Update last activity timestamp
+        table_session.last_activity = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'session_id': table_session.session_id,
+                'table_id': table_session.table_id,
+                'customer_id': table_session.user_id,
+                'customer_name': table_session.user.name,
+                'table_number': table_session.table.table_number,
+                'started_at': table_session.started_at.isoformat(),
+                'expires_at': (table_session.started_at + timedelta(hours=4)).isoformat(),
+                'remaining_time': str(timedelta(hours=4) - session_age)
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/whatsapp-sessions/<session_token>', methods=['DELETE'])
+def end_whatsapp_session(session_token):
+    """End WhatsApp session"""
+    try:
+        table_session = TableSession.query.filter_by(
+            session_token=session_token,
+            is_active=True
+        ).first()
+
+        if not table_session:
+            return jsonify({
+                'status': 'error',
+                'message': 'Session not found'
+            }), 404
+
+        # End session
+        table_session.end_session()
+
+        # Update table status if no other active sessions
+        other_sessions = TableSession.query.filter_by(
+            table_id=table_session.table_id,
+            is_active=True
+        ).count()
+
+        if other_sessions == 0:
+            table_session.table.status = 'available'
+            db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Session ended successfully'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/customers/<int:customer_id>')
+def get_customer_by_id(customer_id):
+    """Get customer by ID"""
+    try:
+        customer = User.query.filter_by(user_id=customer_id, role='customer').first()
+
+        if customer:
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'id': customer.user_id,
+                    'name': customer.name,
+                    'email': customer.email,
+                    'phone': customer.phone,
+                    'role': customer.role,
+                    'is_active': customer.is_active
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+# n8n Integration Endpoints
+
+@bp.route('/menu/categories')
+def get_menu_categories():
+    """Get all menu categories for n8n integration"""
+    try:
+        categories = Category.query.filter_by(is_active=True).order_by(Category.display_order).all()
+
+        category_list = []
+        for category in categories:
+            category_list.append({
+                'id': category.category_id,
+                'name': category.name,
+                'description': category.description,
+                'display_order': category.display_order,
+                'is_active': category.is_active
+            })
+
+        return jsonify({
+            'status': 'success',
+            'data': category_list
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/menu/items/<int:category_id>')
+def get_items_by_category(category_id):
+    """Get menu items by category for n8n integration"""
+    try:
+        items = MenuItem.query.filter_by(category_id=category_id, status='available').all()
+
+        item_list = []
+        for item in items:
+            item_list.append({
+                'id': item.item_id,
+                'name': item.name,
+                'description': item.description,
+                'price': float(item.price),
+                'category_id': item.category_id,
+                'image_url': item.image_url,
+                'stock': item.stock,
+                'status': item.status
+            })
+
+        return jsonify({
+            'status': 'success',
+            'data': item_list
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/menu/item/<int:item_id>')
+def get_menu_item(item_id):
+    """Get specific menu item details for n8n integration"""
+    try:
+        item = MenuItem.query.get_or_404(item_id)
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'id': item.item_id,
+                'name': item.name,
+                'description': item.description,
+                'price': float(item.price),
+                'category_id': item.category_id,
+                'category_name': item.category.name if item.category else None,
+                'image_url': item.image_url,
+                'stock': item.stock,
+                'status': item.status
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/orders/customer/<phone>')
+def get_customer_orders_by_phone(phone):
+    """Get customer orders by phone number for n8n integration"""
+    try:
+        # Clean phone number
+        clean_phone = phone.replace('@c.us', '').replace('+', '').replace('-', '').replace(' ', '')
+
+        customer = User.query.filter_by(phone=clean_phone, role='customer').first()
+        if not customer:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer not found'
+            }), 404
+
+        orders = Order.query.filter_by(user_id=customer.user_id).order_by(Order.order_time.desc()).limit(10).all()
+
+        order_list = []
+        for order in orders:
+            order_items = []
+            for item in order.order_items:
+                order_items.append({
+                    'id': item.item_id,
+                    'name': item.menu_item.name,
+                    'quantity': item.quantity,
+                    'unit_price': float(item.unit_price),
+                    'total_price': float(item.unit_price * item.quantity),
+                    'note': item.note
+                })
+
+            order_list.append({
+                'order_id': order.order_id,
+                'order_number': f"ORD-{order.order_id:06d}",
+                'status': order.status,
+                'total_amount': float(order.total_amount),
+                'order_time': order.order_time.isoformat(),
+                'estimated_time': order.estimated_time or 25,
+                'notes': order.notes,
+                'items': order_items
+            })
+
+        return jsonify({
+            'status': 'success',
+            'data': order_list
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/orders/whatsapp', methods=['POST'])
+def create_whatsapp_order():
+    """Create order from WhatsApp via n8n integration"""
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No data provided'
+            }), 400
+
+        # Required fields
+        customer_phone = data.get('customer_phone')
+        items = data.get('items', [])
+
+        if not customer_phone or not items:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer phone and items are required'
+            }), 400
+
+        # Clean phone number
+        clean_phone = customer_phone.replace('@c.us', '').replace('+', '').replace('-', '').replace(' ', '')
+
+        # Get or create customer
+        customer = User.query.filter_by(phone=clean_phone, role='customer').first()
+        if not customer:
+            # Create new customer with basic info
+            customer = User(
+                name=data.get('customer_name', f'WhatsApp Customer {clean_phone[-4:]}'),
+                phone=clean_phone,
+                password_hash='whatsapp_customer',
+                role='customer',
+                is_active=True
+            )
+            db.session.add(customer)
+            db.session.flush()
+
+        # Create order
+        order = Order(
+            user_id=customer.user_id,
+            table_id=data.get('table_id'),
+            notes=data.get('notes', ''),
+            status='new'
+        )
+        db.session.add(order)
+        db.session.flush()
+
+        total_amount = 0
+        order_items = []
+
+        # Add order items
+        for item_data in items:
+            item_id = item_data.get('item_id')
+            quantity = item_data.get('quantity', 1)
+            note = item_data.get('note', '')
+
+            menu_item = MenuItem.query.get(item_id)
+            if not menu_item:
+                db.session.rollback()
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Menu item {item_id} not found'
+                }), 404
+
+            if menu_item.status != 'available':
+                db.session.rollback()
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Menu item {menu_item.name} is not available'
+                }), 400
+
+            order_item = OrderItem(
+                order_id=order.order_id,
+                item_id=item_id,
+                quantity=quantity,
+                unit_price=menu_item.price,
+                note=note
+            )
+            db.session.add(order_item)
+
+            total_amount += float(menu_item.price) * quantity
+            order_items.append({
+                'name': menu_item.name,
+                'quantity': quantity,
+                'unit_price': float(menu_item.price),
+                'total_price': float(menu_item.price) * quantity,
+                'note': note
+            })
+
+        order.total_amount = total_amount
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'order_id': order.order_id,
+                'order_number': f"ORD-{order.order_id:06d}",
+                'customer_id': customer.user_id,
+                'customer_name': customer.name,
+                'customer_phone': customer.phone,
+                'total_amount': total_amount,
+                'status': order.status,
+                'items': order_items,
+                'estimated_time': 25
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/orders/<int:order_id>/status/n8n', methods=['PUT'])
+def update_order_status_n8n(order_id):
+    """Update order status for n8n integration"""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+
+        if not new_status:
+            return jsonify({
+                'status': 'error',
+                'message': 'Status is required'
+            }), 400
+
+        if new_status not in ['new', 'processing', 'completed', 'rejected', 'cancelled']:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid status'
+            }), 400
+
+        order = Order.query.get_or_404(order_id)
+        order.status = new_status
+
+        if new_status == 'completed':
+            order.completion_time = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'order_id': order.order_id,
+                'status': order.status,
+                'completion_time': order.completion_time.isoformat() if order.completion_time else None
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/tables/<int:table_id>')
+def get_table_info(table_id):
+    """Get table information for n8n integration"""
+    try:
+        table = Table.query.get_or_404(table_id)
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'id': table.table_id,
+                'number': table.table_number,
+                'capacity': table.capacity,
+                'status': table.status,
+                'location': table.location
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/tables/<int:table_id>/service-request', methods=['POST'])
+def create_table_service_request(table_id):
+    """Create service request for table via n8n integration"""
+    try:
+        data = request.get_json()
+
+        customer_phone = data.get('customer_phone')
+        request_type = data.get('request_type', 'general')
+        description = data.get('description', '')
+
+        if not customer_phone:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer phone is required'
+            }), 400
+
+        # Clean phone number and get customer
+        clean_phone = customer_phone.replace('@c.us', '').replace('+', '').replace('-', '').replace(' ', '')
+        customer = User.query.filter_by(phone=clean_phone, role='customer').first()
+
+        if not customer:
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer not found'
+            }), 404
+
+        # Validate table exists
+        table = Table.query.get_or_404(table_id)
+
+        # Create service request
+        service_request = ServiceRequest(
+            user_id=customer.user_id,
+            table_id=table_id,
+            request_type=request_type,
+            description=description,
+            status='pending'
+        )
+
+        db.session.add(service_request)
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'request_id': service_request.request_id,
+                'table_id': table_id,
+                'customer_id': customer.user_id,
+                'request_type': request_type,
+                'description': description,
+                'status': service_request.status,
+                'created_at': service_request.created_at.isoformat()
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+
+@bp.route('/service-requests', methods=['POST'])
+def create_whatsapp_service_request():
+    """Create service request for WhatsApp bot"""
+    try:
+        data = request.get_json()
+
+        if not data or not data.get('customer_id') or not data.get('table_id'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Customer ID and table ID are required'
+            }), 400
+
+        service_request = ServiceRequest(
+            user_id=data['customer_id'],
+            table_id=data['table_id'],
+            service_type=data.get('service_type', 'general'),
+            description=data.get('description', ''),
+            status='pending',
+            priority='normal'
+        )
+
+        db.session.add(service_request)
+        db.session.commit()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'id': service_request.request_id,
+                'status': service_request.status
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/loyalty/points/<int:customer_id>')
+def get_loyalty_points(customer_id):
+    """Get customer loyalty points"""
+    try:
+        from app.models import CustomerLoyalty
+
+        loyalty = CustomerLoyalty.query.filter_by(user_id=customer_id).first()
+
+        if loyalty:
+            return jsonify({
+                'status': 'success',
+                'points': loyalty.total_points
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'points': 0
+            })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@bp.route('/loyalty/rewards')
+def get_loyalty_rewards():
+    """Get available loyalty rewards"""
+    try:
+        from app.models import RewardItem
+
+        rewards = RewardItem.query.filter_by(status='active').all()
+
+        reward_list = []
+        for reward in rewards:
+            reward_list.append({
+                'id': reward.reward_id,
+                'name': reward.name,
+                'description': reward.description,
+                'points_required': reward.points_required,
+                'category': reward.category
+            })
+
+        return jsonify({
+            'status': 'success',
+            'data': reward_list
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500

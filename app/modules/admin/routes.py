@@ -106,12 +106,13 @@ def dashboard():
         # If no tables with QR codes, use None to trigger fallback
         tables_data = None
 
-    # Today's orders and revenue
+    # Today's orders and revenue - only completed orders
     today_orders_query = db.session.query(
         func.count(Order.order_id).label('order_count'),
         func.sum(Order.total_amount).label('total_revenue')
     ).filter(
-        Order.order_time >= today_start
+        Order.order_time >= today_start,
+        Order.status == 'completed'
     ).first()
     
     # Recent orders for last 7 days
@@ -119,12 +120,13 @@ def dashboard():
         Order.order_time >= now - timedelta(days=7)
     ).count()
     
-    # Monthly revenue (current month)
+    # Monthly revenue (current month) - only completed orders
     month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
     monthly_revenue = db.session.query(
         func.sum(Order.total_amount)
     ).filter(
-        Order.order_time >= month_start
+        Order.order_time >= month_start,
+        Order.status == 'completed'
     ).scalar() or 0
     
     # Prepare today's order data
@@ -139,13 +141,14 @@ def dashboard():
         day_start = datetime(day_date.year, day_date.month, day_date.day, tzinfo=timezone.utc)
         day_end = day_start + timedelta(days=1)
         
-        # Get orders and revenue for this day
+        # Get orders and revenue for this day - only completed orders
         day_data = db.session.query(
             func.count(Order.order_id).label('order_count'),
             func.sum(Order.total_amount).label('revenue')
         ).filter(
             Order.order_time >= day_start,
-            Order.order_time < day_end
+            Order.order_time < day_end,
+            Order.status == 'completed'
         ).first()
         
         # Format date as day name
@@ -390,8 +393,8 @@ def revenue_analytics():
         start_date = None
         end_date = now
 
-    # Build base query
-    base_query = Order.query
+    # Build base query - only include completed orders for revenue calculations
+    base_query = Order.query.filter(Order.status == 'completed')
     if start_date:
         base_query = base_query.filter(Order.order_time >= start_date)
     base_query = base_query.filter(Order.order_time <= end_date)
@@ -442,8 +445,8 @@ def customer_analytics():
 
     end_date = now
 
-    # Build base query
-    base_query = Order.query
+    # Build base query - only include completed orders for analytics
+    base_query = Order.query.filter(Order.status == 'completed')
     if start_date:
         base_query = base_query.filter(Order.order_time >= start_date)
     base_query = base_query.filter(Order.order_time <= end_date)
@@ -1680,7 +1683,7 @@ def add_campaign():
         return redirect(url_for('main.index'))
 
     # Get categories for the form
-    categories = Category.query.filter_by(status='active').all()
+    categories = Category.query.filter_by(is_active=True).all()
     
     if request.method == 'POST':
         try:
@@ -1729,7 +1732,7 @@ def edit_campaign(campaign_id):
         return redirect(url_for('main.index'))
 
     campaign = PromotionalCampaign.query.get_or_404(campaign_id)
-    categories = Category.query.filter_by(status='active').all()
+    categories = Category.query.filter_by(is_active=True).all()
     
     if request.method == 'POST':
         try:
@@ -1899,7 +1902,7 @@ def api_recent_activity():
         activities.append({
             'title': f'New order from {order.customer.name}',
             'icon': 'fas fa-shopping-cart',
-            'time': order.order_time.strftime('%H:%M'),
+            'timestamp': order.order_time.isoformat() + 'Z',  # UTC timestamp
             'type': 'order'
         })
 
@@ -2322,9 +2325,7 @@ def api_notifications():
         ).order_by(Order.order_time.desc()).limit(5).all()
         
         for order in recent_orders:
-            time_ago = datetime.utcnow() - order.order_time
-            minutes_ago = int(time_ago.total_seconds() / 60)
-            
+            # Send UTC timestamp to frontend for timezone conversion
             notifications.append({
                 'id': f"order_{order.id}",
                 'type': 'order',
@@ -2332,7 +2333,7 @@ def api_notifications():
                 'color': 'success' if order.status == 'processing' else 'warning',
                 'title': f"Order #{order.id}",
                 'message': f"Status: {order.status.title()}",
-                'time': f"{minutes_ago} minutes ago" if minutes_ago > 0 else "Just now",
+                'timestamp': order.order_time.isoformat() + 'Z',  # UTC timestamp
                 'url': url_for('admin.orders')
             })
         
@@ -2351,7 +2352,7 @@ def api_notifications():
                 'color': 'warning',
                 'title': f"Low Stock: {item.name}",
                 'message': f"Only {item.stock} items left",
-                'time': "Now",
+                'timestamp': datetime.utcnow().isoformat() + 'Z',  # Current UTC timestamp
                 'url': url_for('admin.menu_management')
             })
         
@@ -2361,9 +2362,6 @@ def api_notifications():
         ).order_by(RewardRedemption.redeemed_at.desc()).limit(3).all()
         
         for redemption in recent_redemptions:
-            time_ago = datetime.utcnow() - redemption.redeemed_at
-            minutes_ago = int(time_ago.total_seconds() / 60)
-            
             notifications.append({
                 'id': f"redemption_{redemption.id}",
                 'type': 'loyalty',
@@ -2371,12 +2369,12 @@ def api_notifications():
                 'color': 'info',
                 'title': "Reward Redeemed",
                 'message': f"{redemption.reward.name}",
-                'time': f"{minutes_ago} minutes ago" if minutes_ago > 0 else "Just now",
+                'timestamp': redemption.redeemed_at.isoformat() + 'Z',  # UTC timestamp
                 'url': url_for('admin.rewards_management')
             })
         
-        # Sort by most recent
-        notifications.sort(key=lambda x: x['time'])
+        # Sort by most recent (using timestamp)
+        notifications.sort(key=lambda x: x['timestamp'], reverse=True)
         
         return jsonify({
             'success': True,
@@ -2715,14 +2713,52 @@ def generate_table_qr(table_id):
         return jsonify({
             'success': True,
             'message': 'QR code generated successfully',
-            'qr_image': f"data:image/png;base64,{img_str}"
+            'qr_image': f"data:image/png;base64,{img_str}",
+            'scan_count': existing_qr.scan_count if existing_qr else 0,
+            'last_scanned': existing_qr.last_scanned.isoformat() if existing_qr and existing_qr.last_scanned else None
         })
-            
+
     except Exception as e:
         db.session.rollback()
         return jsonify({
             'success': False,
             'message': f'Error generating QR code: {str(e)}'
+        }), 500
+
+@bp.route('/api/qr-codes/<int:table_id>/image', methods=['GET'])
+@login_required
+def get_qr_image(table_id):
+    """Get QR code image for a specific table"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
+    try:
+        qr_type = request.args.get('type', 'menu')
+
+        # Get existing QR code
+        qr_code = QRCode.query.filter_by(
+            table_id=table_id,
+            qr_type=qr_type,
+            is_active=True
+        ).first()
+
+        if qr_code and qr_code.qr_image_data:
+            return jsonify({
+                'success': True,
+                'qr_image': f"data:image/png;base64,{qr_code.qr_image_data}",
+                'scan_count': qr_code.scan_count,
+                'last_scanned': qr_code.last_scanned.isoformat() if qr_code.last_scanned else None
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'QR code not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error retrieving QR code: {str(e)}'
         }), 500
 
 @bp.route('/api/qr-codes/generate-all', methods=['POST'])
@@ -2808,29 +2844,85 @@ def generate_all_qr():
             'message': f'Error generating QR codes: {str(e)}'
         }), 500
 
-@bp.route('/api/qr-codes/<int:table_id>/image')
-def get_qr_image(table_id):
-    """Get QR code image for a table"""
+@bp.route('/api/qr-codes/analytics', methods=['GET'])
+@login_required
+def get_qr_analytics():
+    """Get QR code analytics and statistics"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
     try:
-        qr_code = QRCode.query.filter_by(table_id=table_id, is_active=True).first()
-        
-        if not qr_code or not qr_code.qr_image_data:
-            return jsonify({
-                'success': False,
-                'message': 'QR code not found'
-            }), 404
-        
+        # Get QR code statistics
+        total_qr_codes = QRCode.query.count()
+        active_qr_codes = QRCode.query.filter_by(is_active=True).count()
+        menu_qr_codes = QRCode.query.filter_by(qr_type='menu', is_active=True).count()
+        whatsapp_qr_codes = QRCode.query.filter_by(qr_type='whatsapp', is_active=True).count()
+
+        # Get scan statistics
+        total_scans = db.session.query(db.func.sum(QRCode.scan_count)).scalar() or 0
+
+        # Get most scanned QR codes
+        most_scanned = QRCode.query.filter(QRCode.scan_count > 0).order_by(
+            QRCode.scan_count.desc()
+        ).limit(5).all()
+
+        most_scanned_data = []
+        for qr in most_scanned:
+            most_scanned_data.append({
+                'table_id': qr.table_id,
+                'table_number': qr.table.table_number,
+                'qr_type': qr.qr_type,
+                'scan_count': qr.scan_count,
+                'last_scanned': qr.last_scanned.isoformat() if qr.last_scanned else None
+            })
+
         return jsonify({
             'success': True,
-            'qr_image': f"data:image/png;base64,{qr_code.qr_image_data}",
-            'url': qr_code.url,
-            'scan_count': qr_code.scan_count
+            'analytics': {
+                'total_qr_codes': total_qr_codes,
+                'active_qr_codes': active_qr_codes,
+                'menu_qr_codes': menu_qr_codes,
+                'whatsapp_qr_codes': whatsapp_qr_codes,
+                'total_scans': total_scans,
+                'most_scanned': most_scanned_data
+            }
         })
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Error retrieving QR code: {str(e)}'
+            'message': f'Error retrieving QR analytics: {str(e)}'
+        }), 500
+
+@bp.route('/api/qr-codes/<int:table_id>/stats', methods=['GET'])
+@login_required
+def get_table_qr_stats(table_id):
+    """Get QR code statistics for a specific table"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+
+    try:
+        # Get all QR codes for this table
+        qr_codes = QRCode.query.filter_by(table_id=table_id, is_active=True).all()
+
+        stats = []
+        for qr in qr_codes:
+            stats.append({
+                'qr_type': qr.qr_type,
+                'scan_count': qr.scan_count,
+                'last_scanned': qr.last_scanned.isoformat() if qr.last_scanned else None,
+                'url': qr.url
+            })
+
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error retrieving table QR stats: {str(e)}'
         }), 500
 
 # ======================== SYSTEM SETTINGS ROUTES ========================
@@ -3073,20 +3165,22 @@ def calculate_growth_metrics(start_date, end_date, period):
     prev_start = start_date - period_length
     prev_end = start_date
 
-    # Current period metrics
+    # Current period metrics - only completed orders
     current_stats = Order.query.filter(
         Order.order_time >= start_date,
-        Order.order_time <= end_date
+        Order.order_time <= end_date,
+        Order.status == 'completed'
     ).with_entities(
         func.sum(Order.total_amount).label('revenue'),
         func.count(Order.order_id).label('orders'),
         func.count(func.distinct(Order.user_id)).label('customers')
     ).first()
 
-    # Previous period metrics
+    # Previous period metrics - only completed orders
     prev_stats = Order.query.filter(
         Order.order_time >= prev_start,
-        Order.order_time < prev_end
+        Order.order_time < prev_end,
+        Order.status == 'completed'
     ).with_entities(
         func.sum(Order.total_amount).label('revenue'),
         func.count(Order.order_id).label('orders'),
@@ -3332,3 +3426,145 @@ def calculate_customer_lifecycle(start_date, end_date):
         'total_customers': total_customers,
         'retention_rate': round(retention_rate, 2)
     }
+
+# WhatsApp QR Code Integration Endpoints
+
+@bp.route('/api/qr-codes/whatsapp/<int:table_id>', methods=['POST'])
+@login_required
+def generate_whatsapp_qr(table_id):
+    """Generate WhatsApp QR code for a specific table"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+
+    try:
+        from app.modules.qr.qr_service import QRCodeService
+        qr_service = QRCodeService()
+
+        # Get WhatsApp settings from request if provided
+        data = request.get_json() if request.is_json else {}
+        whatsapp_number = data.get('whatsapp_number', current_app.config.get('WHATSAPP_BOT_NUMBER', '201234567890'))
+
+        # Temporarily store settings in request for QR service to access
+        if request.is_json:
+            request._whatsapp_settings = {
+                'whatsapp_number': whatsapp_number,
+                'message_template': data.get('whatsapp_message', 'Hello! I\'m at table {table_number} and would like to place an order.')
+            }
+
+        # Generate WhatsApp QR code
+        result = qr_service.generate_qr_as_base64(table_id, qr_type='whatsapp')
+
+        if result['success']:
+            # Update database with WhatsApp QR code
+            existing_qr = QRCode.query.filter_by(
+                table_id=table_id,
+                qr_type='whatsapp'
+            ).first()
+
+            if existing_qr:
+                existing_qr.url = result['url']
+                existing_qr.is_active = True
+            else:
+                qr_code = QRCode(
+                    table_id=table_id,
+                    url=result['url'],
+                    qr_type='whatsapp',
+                    is_active=True
+                )
+                db.session.add(qr_code)
+
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': f'WhatsApp QR code generated for table {table_id}',
+                'qr_image': result['base64'],
+                'whatsapp_url': result['url']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': result['message']
+            }), 400
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error generating WhatsApp QR code: {str(e)}'
+        }), 500
+
+@bp.route('/api/qr-codes/whatsapp/bulk', methods=['POST'])
+@login_required
+def generate_whatsapp_qr_bulk():
+    """Generate WhatsApp QR codes for all tables"""
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': 'Admin access required'}), 403
+
+    try:
+        from app.modules.qr.qr_service import QRCodeService
+        qr_service = QRCodeService()
+
+        # Get all tables
+        tables = Table.query.all()
+        results = []
+
+        for table in tables:
+            try:
+                result = qr_service.generate_qr_as_base64(table.table_id, qr_type='whatsapp')
+
+                if result['success']:
+                    # Update database
+                    existing_qr = QRCode.query.filter_by(
+                        table_id=table.table_id,
+                        qr_type='whatsapp'
+                    ).first()
+
+                    if existing_qr:
+                        existing_qr.url = result['url']
+                        existing_qr.is_active = True
+                    else:
+                        qr_code = QRCode(
+                            table_id=table.table_id,
+                            url=result['url'],
+                            qr_type='whatsapp',
+                            is_active=True
+                        )
+                        db.session.add(qr_code)
+
+                    results.append({
+                        'table_id': table.table_id,
+                        'table_number': table.table_number,
+                        'success': True,
+                        'whatsapp_url': result['url']
+                    })
+                else:
+                    results.append({
+                        'table_id': table.table_id,
+                        'table_number': table.table_number,
+                        'success': False,
+                        'error': result['message']
+                    })
+
+            except Exception as e:
+                results.append({
+                    'table_id': table.table_id,
+                    'table_number': table.table_number,
+                    'success': False,
+                    'error': str(e)
+                })
+
+        db.session.commit()
+
+        successful_count = sum(1 for r in results if r['success'])
+
+        return jsonify({
+            'success': True,
+            'message': f'Generated WhatsApp QR codes for {successful_count}/{len(tables)} tables',
+            'results': results
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error generating WhatsApp QR codes: {str(e)}'
+        }), 500

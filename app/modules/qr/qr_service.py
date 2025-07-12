@@ -27,7 +27,7 @@ class QRCodeService:
             table = Table.query.get(table_id)
             if not table:
                 return {'success': False, 'message': 'Table not found'}
-            
+
             # Generate URL based on QR type
             if qr_type == 'menu':
                 url = url_for('customer.menu', table_id=table_id, _external=True)
@@ -35,6 +35,52 @@ class QRCodeService:
                 url = url_for('auth.login', table_id=table_id, _external=True)
             elif qr_type == 'payment':
                 url = url_for('payment.checkout', table_id=table_id, _external=True)
+            elif qr_type == 'whatsapp':
+                # Generate WhatsApp URL with table information
+                from flask import current_app, request
+
+                # Try to get WhatsApp number from request (QR settings) or config
+                whatsapp_number = None
+                message_template = None
+
+                if request and hasattr(request, '_whatsapp_settings'):
+                    # Settings passed from admin route
+                    whatsapp_number = request._whatsapp_settings.get('whatsapp_number')
+                    message_template = request._whatsapp_settings.get('message_template')
+                elif request and request.is_json:
+                    # Settings from direct JSON request
+                    data = request.get_json()
+                    whatsapp_number = data.get('whatsapp_number') if data else None
+                    message_template = data.get('whatsapp_message') if data else None
+
+                if not whatsapp_number:
+                    whatsapp_number = current_app.config.get('WHATSAPP_BOT_NUMBER', '201234567890')
+
+                if not message_template:
+                    message_template = "Hello! I'm at table {table_number} and would like to place an order."
+
+                # Remove any non-numeric characters except +
+                import re
+                whatsapp_number = re.sub(r'[^\d+]', '', whatsapp_number)
+                if not whatsapp_number.startswith('+'):
+                    whatsapp_number = '+' + whatsapp_number.lstrip('+')
+
+                # Create message with table number and unique code for security
+                import uuid
+                unique_code = str(uuid.uuid4())[:8].upper()
+
+                # Get table info for message
+                table = Table.query.get(table_id)
+                table_number = table.table_number if table else str(table_id)
+
+                # Create message using template
+                message = message_template.replace('{table_number}', str(table_number))
+                message += f" (Code: {unique_code})"
+
+                # URL encode the message
+                import urllib.parse
+                encoded_message = urllib.parse.quote(message)
+                url = f"https://wa.me/{whatsapp_number.lstrip('+')}?text={encoded_message}"
             else:
                 url = url_for('main.index', table_id=table_id, _external=True)
             
@@ -50,27 +96,34 @@ class QRCodeService:
             
             # Create QR image
             img = qr.make_image(fill_color="black", back_color="white")
-            
+
             # Save as file
             filename = f"table_{table_id}_{qr_type}.png"
             filepath = os.path.join(self.qr_dir, filename)
             img.save(filepath)
-            
+
+            # Convert to base64 for database storage
+            buffer = io.BytesIO()
+            img.save(buffer, format='PNG')
+            img_str = base64.b64encode(buffer.getvalue()).decode()
+
             # Save to database
             existing_qr = QRCode.query.filter_by(
-                table_id=table_id, 
+                table_id=table_id,
                 qr_type=qr_type
             ).first()
-            
+
             if existing_qr:
                 existing_qr.url = url
                 existing_qr.is_active = True
+                existing_qr.qr_image_data = img_str
             else:
                 qr_code = QRCode(
                     table_id=table_id,
                     url=url,
                     qr_type=qr_type,
-                    is_active=True
+                    is_active=True,
+                    qr_image_data=img_str
                 )
                 db.session.add(qr_code)
             
@@ -102,6 +155,52 @@ class QRCodeService:
                 url = url_for('auth.login', table_id=table_id, _external=True)
             elif qr_type == 'payment':
                 url = url_for('payment.checkout', table_id=table_id, _external=True)
+            elif qr_type == 'whatsapp':
+                # Generate WhatsApp URL with table information
+                from flask import current_app, request
+
+                # Try to get WhatsApp number from request (QR settings) or config
+                whatsapp_number = None
+                message_template = None
+
+                if request and hasattr(request, '_whatsapp_settings'):
+                    # Settings passed from admin route
+                    whatsapp_number = request._whatsapp_settings.get('whatsapp_number')
+                    message_template = request._whatsapp_settings.get('message_template')
+                elif request and request.is_json:
+                    # Settings from direct JSON request
+                    data = request.get_json()
+                    whatsapp_number = data.get('whatsapp_number') if data else None
+                    message_template = data.get('whatsapp_message') if data else None
+
+                if not whatsapp_number:
+                    whatsapp_number = current_app.config.get('WHATSAPP_BOT_NUMBER', '201234567890')
+
+                if not message_template:
+                    message_template = "Hello! I'm at table {table_number} and would like to place an order."
+
+                # Remove any non-numeric characters except +
+                import re
+                whatsapp_number = re.sub(r'[^\d+]', '', whatsapp_number)
+                if not whatsapp_number.startswith('+'):
+                    whatsapp_number = '+' + whatsapp_number.lstrip('+')
+
+                # Create message with table number and unique code for security
+                import uuid
+                unique_code = str(uuid.uuid4())[:8].upper()
+
+                # Get table info for message
+                table = Table.query.get(table_id)
+                table_number = table.table_number if table else str(table_id)
+
+                # Create message using template
+                message = message_template.replace('{table_number}', str(table_number))
+                message += f" (Code: {unique_code})"
+
+                # URL encode the message
+                import urllib.parse
+                encoded_message = urllib.parse.quote(message)
+                url = f"https://wa.me/{whatsapp_number.lstrip('+')}?text={encoded_message}"
             else:
                 url = url_for('main.index', table_id=table_id, _external=True)
             
@@ -122,7 +221,29 @@ class QRCodeService:
             buffer = io.BytesIO()
             img.save(buffer, format='PNG')
             img_str = base64.b64encode(buffer.getvalue()).decode()
-            
+
+            # Save to database
+            existing_qr = QRCode.query.filter_by(
+                table_id=table_id,
+                qr_type=qr_type
+            ).first()
+
+            if existing_qr:
+                existing_qr.url = url
+                existing_qr.is_active = True
+                existing_qr.qr_image_data = img_str
+            else:
+                qr_code = QRCode(
+                    table_id=table_id,
+                    url=url,
+                    qr_type=qr_type,
+                    is_active=True,
+                    qr_image_data=img_str
+                )
+                db.session.add(qr_code)
+
+            db.session.commit()
+
             return {
                 'success': True,
                 'base64': f"data:image/png;base64,{img_str}",

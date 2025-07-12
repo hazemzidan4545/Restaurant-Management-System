@@ -1,173 +1,211 @@
-{% extends "admin/base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Customer Analytics - Admin Dashboard{% endblock %}
+{% block page_title %}Customer Analytics{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="text-gradient">
-                    <i class="fas fa-users-cog me-2"></i>Customer Analytics
-                </h1>
-                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-                </a>
+<!-- Enhanced Page Header -->
+<div class="page-header">
+    <div class="header-background">
+        <div class="header-pattern"></div>
+        <div class="header-gradient"></div>
+    </div>
+    <div class="header-content">
+        <div class="header-icon-container">
+            <div class="header-icon">
+                <i class="fas fa-users-cog"></i>
             </div>
+        </div>
+        <div class="header-text">
+            <h1 class="page-title">Customer Analytics</h1>
+            <p class="page-description">
+                <i class="fas fa-info-circle"></i>
+                Analyze customer behavior, retention, and engagement metrics
+            </p>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <span class="stat-number">{{ behavior_data.total_customers if behavior_data.total_customers else 0 }}</span>
+                    <span class="stat-label">Total Customers</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ lifecycle_data.new_customers if lifecycle_data.new_customers else 0 }}</span>
+                    <span class="stat-label">New Customers</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ lifecycle_data.retention_rate|round(1) if lifecycle_data.retention_rate else 0 }}%</span>
+                    <span class="stat-label">Retention Rate</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('admin.dashboard') }}" class="header-btn header-btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <button onclick="exportCustomers()" class="header-btn header-btn-primary">
+                <i class="fas fa-download"></i>
+                <span>Export Data</span>
+            </button>
         </div>
     </div>
+</div>
 
-    <!-- Time Period Filter -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="btn-group" role="group">
-                        <a href="{{ url_for('admin.customer_analytics', period='week') }}" 
-                           class="btn {{ 'btn-primary' if period == 'week' else 'btn-outline-primary' }}">
-                            This Week
-                        </a>
-                        <a href="{{ url_for('admin.customer_analytics', period='month') }}" 
-                           class="btn {{ 'btn-primary' if period == 'month' else 'btn-outline-primary' }}">
-                            This Month
-                        </a>
-                        <a href="{{ url_for('admin.customer_analytics', period='quarter') }}" 
-                           class="btn {{ 'btn-primary' if period == 'quarter' else 'btn-outline-primary' }}">
-                            This Quarter
-                        </a>
-                        <a href="{{ url_for('admin.customer_analytics', period='year') }}" 
-                           class="btn {{ 'btn-primary' if period == 'year' else 'btn-outline-primary' }}">
-                            This Year
-                        </a>
-                        <a href="{{ url_for('admin.customer_analytics', period='all') }}" 
-                           class="btn {{ 'btn-primary' if period == 'all' else 'btn-outline-primary' }}">
-                            All Time
-                        </a>
-                    </div>
-                </div>
-            </div>
+<!-- Time Period Filter -->
+<div class="admin-card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-calendar-alt"></i>
+            Time Period Filter
+        </h3>
+    </div>
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('admin.customer_analytics', period='week') }}"
+               class="btn {{ 'btn-primary' if period == 'week' else 'btn-outline-primary' }}">
+                This Week
+            </a>
+            <a href="{{ url_for('admin.customer_analytics', period='month') }}"
+               class="btn {{ 'btn-primary' if period == 'month' else 'btn-outline-primary' }}">
+                This Month
+            </a>
+            <a href="{{ url_for('admin.customer_analytics', period='quarter') }}"
+               class="btn {{ 'btn-primary' if period == 'quarter' else 'btn-outline-primary' }}">
+                This Quarter
+            </a>
+            <a href="{{ url_for('admin.customer_analytics', period='year') }}"
+               class="btn {{ 'btn-primary' if period == 'year' else 'btn-outline-primary' }}">
+                This Year
+            </a>
+            <a href="{{ url_for('admin.customer_analytics', period='all') }}"
+               class="btn {{ 'btn-primary' if period == 'all' else 'btn-outline-primary' }}">
+                All Time
+            </a>
         </div>
     </div>
+</div>
 
-    <!-- Customer Overview Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ behavior_data.total_customers }}</h4>
-                            <p class="mb-0">Total Customers</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-users fa-2x"></i>
-                        </div>
+<!-- Customer Overview Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="admin-card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ behavior_data.total_customers }}</h4>
+                        <p class="mb-0">Total Customers</p>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ lifecycle_data.new_customers }}</h4>
-                            <p class="mb-0">New Customers</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-user-plus fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ "%.2f"|format(behavior_data.avg_customer_value) }} EGP</h4>
-                            <p class="mb-0">Avg Customer Value</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-dollar-sign fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="mb-0">{{ "%.1f"|format(lifecycle_data.retention_rate) }}%</h4>
-                            <p class="mb-0">Retention Rate</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-heart fa-2x"></i>
-                        </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Customer Segmentation -->
-    <div class="row mb-4">
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-pie me-2"></i>Customer Segmentation
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="segmentationChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Order Frequency Distribution -->
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-bar me-2"></i>Order Frequency Distribution
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="frequencyChart" width="400" height="200"></canvas>
+    <div class="col-md-3 mb-3">
+        <div class="admin-card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ lifecycle_data.new_customers }}</h4>
+                        <p class="mb-0">New Customers</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-plus fa-2x"></i>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Order Patterns -->
-    <div class="row mb-4">
-        <!-- Day of Week Pattern -->
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-calendar-week me-2"></i>Orders by Day of Week
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="dayOfWeekChart" width="400" height="200"></canvas>
+    <div class="col-md-3 mb-3">
+        <div class="admin-card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ "%.2f"|format(behavior_data.avg_customer_value) }} EGP</h4>
+                        <p class="mb-0">Avg Customer Value</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- Hour of Day Pattern -->
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-clock me-2"></i>Orders by Hour of Day
-                    </h5>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="admin-card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ "%.1f"|format(lifecycle_data.retention_rate) }}%</h4>
+                        <p class="mb-0">Retention Rate</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-heart fa-2x"></i>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Segmentation -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Customer Segmentation
+                </h3>
+            </div>
+            <div class="card-body">
+                <canvas id="segmentationChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Frequency Distribution -->
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Order Frequency Distribution
+                </h3>
+            </div>
+            <div class="card-body">
+                <canvas id="frequencyChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Patterns -->
+<div class="row mb-4">
+    <!-- Day of Week Pattern -->
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-calendar-week"></i>
+                    Orders by Day of Week
+                </h3>
+            </div>
+            <div class="card-body">
+                <canvas id="dayOfWeekChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hour of Day Pattern -->
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-clock"></i>
+                    Orders by Hour of Day
+                </h3>
+            </div>
                 <div class="card-body">
                     <canvas id="hourOfDayChart" width="400" height="200"></canvas>
                 </div>
@@ -177,92 +215,94 @@
 
     <!-- Customer Details Tables -->
     <div class="row mb-4">
-        <!-- Top Customers -->
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-crown me-2"></i>Top Customers
-                    </h5>
+    <!-- Top Customers -->
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-crown"></i>
+                    Top Customers
+                </h3>
+            </div>
+            <div class="card-body p-0">
+                {% if behavior_data.customer_metrics %}
+                <div class="table-responsive text-center">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Total Spent</th>
+                                <th>Orders</th>
+                                <th>Avg Order</th>
+                                <th>Frequency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in behavior_data.customer_metrics[:10] %}
+                            <tr>
+                                <td>
+                                    <div>
+                                        <strong>{{ customer.name }}</strong>
+                                        <br><small class="text-muted">{{ customer.email }}</small>
+                                    </div>
+                                </td>
+                                <td><span class="status-badge status-completed">{{ "%.2f"|format(customer.total_spent) }} EGP</span></td>
+                                <td><span class="status-badge status-processing">{{ customer.order_count }}</span></td>
+                                <td><span class="status-badge status-pending">{{ "%.2f"|format(customer.avg_order_value) }} EGP</span></td>
+                                <td>
+                                    {% if customer.frequency > 0.1 %}
+                                        <span class="status-badge status-completed">High</span>
+                                    {% elif customer.frequency > 0.05 %}
+                                        <span class="status-badge status-pending">Medium</span>
+                                    {% else %}
+                                        <span class="status-badge status-new">Low</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="card-body">
-                    {% if behavior_data.customer_metrics %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Customer</th>
-                                    <th>Total Spent</th>
-                                    <th>Orders</th>
-                                    <th>Avg Order</th>
-                                    <th>Frequency</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for customer in behavior_data.customer_metrics[:10] %}
-                                <tr>
-                                    <td>
-                                        <div>
-                                            <strong>{{ customer.name }}</strong>
-                                            <br><small class="text-muted">{{ customer.email }}</small>
-                                        </div>
-                                    </td>
-                                    <td>{{ "%.2f"|format(customer.total_spent) }} EGP</td>
-                                    <td>{{ customer.order_count }}</td>
-                                    <td>{{ "%.2f"|format(customer.avg_order_value) }} EGP</td>
-                                    <td>
-                                        {% if customer.frequency > 0.1 %}
-                                            <span class="badge bg-success">High</span>
-                                        {% elif customer.frequency > 0.05 %}
-                                            <span class="badge bg-warning">Medium</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Low</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-3">
-                        <i class="fas fa-users fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">No customer data available</p>
-                    </div>
-                    {% endif %}
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-users fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">No customer data available</p>
                 </div>
+                {% endif %}
             </div>
         </div>
+    </div>
 
-        <!-- Customer Segments Details -->
-        <div class="col-md-6 mb-3">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-layer-group me-2"></i>Segment Details
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Segment</th>
-                                    <th>Customers</th>
-                                    <th>Percentage</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for segment_name, customers in segmentation_data.items() %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ segment_name }}</strong>
-                                    </td>
-                                    <td>{{ customers|length }}</td>
-                                    <td>
-                                        {% set percentage = (customers|length / behavior_data.total_customers * 100) if behavior_data.total_customers > 0 else 0 %}
-                                        {{ "%.1f"|format(percentage) }}%
-                                    </td>
+    <!-- Customer Segments Details -->
+    <div class="col-md-6 mb-3">
+        <div class="admin-card">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-layer-group"></i>
+                    Segment Details
+                </h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive text-center">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Segment</th>
+                                <th>Customers</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for segment_name, customers in segmentation_data.items() %}
+                            <tr>
+                                <td>
+                                    <strong>{{ segment_name }}</strong>
+                                </td>
+                                <td><span class="status-badge status-processing">{{ customers|length }}</span></td>
+                                <td>
+                                    {% set percentage = (customers|length / behavior_data.total_customers * 100) if behavior_data.total_customers > 0 else 0 %}
+                                    <span class="status-badge status-completed">{{ "%.1f"|format(percentage) }}%</span>
+                                </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -273,47 +313,100 @@
         </div>
     </div>
 
-    <!-- Popular Items -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-star me-2"></i>Most Popular Items
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if pattern_data.popular_items %}
-                    <div class="row">
-                        {% for item in pattern_data.popular_items %}
-                        <div class="col-md-3 col-sm-6 mb-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title">{{ item.name }}</h6>
-                                    <p class="card-text">
-                                        <span class="badge bg-primary">{{ item.frequency }} orders</span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+<!-- Popular Items -->
+<div class="admin-card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-star"></i>
+            Most Popular Items
+        </h3>
+    </div>
+    <div class="card-body">
+        {% if pattern_data.popular_items %}
+        <div class="row">
+            {% for item in pattern_data.popular_items %}
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="admin-card bg-light">
+                    <div class="card-body text-center">
+                        <h6 class="card-title"><strong>{{ item.name }}</strong></h6>
+                        <p class="card-text">
+                            <span class="status-badge status-processing">{{ item.frequency }} orders</span>
+                        </p>
                     </div>
-                    {% else %}
-                    <div class="text-center py-3">
-                        <i class="fas fa-utensils fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">No item data available</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <div class="text-center py-3">
+            <i class="fas fa-utensils fa-2x text-muted mb-2"></i>
+            <p class="text-muted">No item data available</p>
+        </div>
+        {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Customer Analytics Specific Styles */
+.admin-table {
+    margin: 0 auto;
+    width: 100%;
+}
+
+.admin-table td {
+    vertical-align: middle;
+    padding: 15px 12px;
+    text-align: center;
+}
+
+.admin-table th {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.admin-table td strong {
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.admin-table .text-muted {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* Status badges are already styled in admin.css */
+.status-badge {
+    display: inline-block;
+    margin: 0 auto;
+}
+
+/* Header actions */
+.header-actions .btn {
+    border-radius: 12px;
+    font-weight: 600;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+}
+
+.header-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Export customer data function
+function exportCustomers() {
+    console.log('Export customer data functionality - would generate CSV/Excel file');
+    // TODO: Implement proper export functionality
+}
+</script>
 <script>
 // Customer Segmentation Chart
 const segmentationCtx = document.getElementById('segmentationChart').getContext('2d');

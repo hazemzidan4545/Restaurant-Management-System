@@ -15,7 +15,11 @@ def create_app(config_name='default'):
     
     # Import WebSocket handlers
     from app import websocket_handlers
-    
+
+    # Initialize security middleware
+    from app.security.session_security import init_security_middleware
+    init_security_middleware(app)
+
     # Register blueprints
     from app.modules.auth import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')

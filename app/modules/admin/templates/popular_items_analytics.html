@@ -665,14 +665,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Validate date range
         endDateInput.addEventListener('change', function() {
             if (startDateInput.value && new Date(startDateInput.value) > new Date(endDateInput.value)) {
-                alert('End date must be after start date');
+                console.log('End date must be after start date');
                 endDateInput.valueAsDate = today;
             }
         });
         
         startDateInput.addEventListener('change', function() {
             if (endDateInput.value && new Date(startDateInput.value) > new Date(endDateInput.value)) {
-                alert('Start date must be before end date');
+                console.log('Start date must be before end date');
                 startDateInput.valueAsDate = thirtyDaysAgo;
             }
         });

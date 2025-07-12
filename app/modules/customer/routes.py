@@ -1,14 +1,126 @@
 from flask import render_template, redirect, url_for, request, flash, jsonify, session
 from flask_login import login_required, current_user
 from app.modules.customer import bp
-from app.models import MenuItem, Category, Order, OrderItem, Payment, CustomerPreferences, Feedback, ServiceRequest, Service, db, Table
+from app.models import MenuItem, Category, Order, OrderItem, Payment, CustomerPreferences, Feedback, ServiceRequest, Service, db, Table, TableSession
 from app.extensions import socketio
 from sqlalchemy.orm import joinedload
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
+from functools import wraps
+import requests
+
+def validate_table_session(f):
+    """Enhanced decorator to validate table session with security measures"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if this is a WhatsApp session
+        whatsapp_session_token = session.get('whatsapp_session_token')
+        table_id = request.args.get('table_id') or session.get('whatsapp_table_id')
+
+        if whatsapp_session_token and table_id:
+            # Enhanced WhatsApp session validation with security checks
+            try:
+                # Validate session via API
+                response = requests.get(f'http://localhost:5000/api/whatsapp-sessions/{whatsapp_session_token}/validate')
+
+                if response.status_code != 200:
+                    # Clear invalid session data
+                    clear_whatsapp_session()
+                    flash('جلسة منتهية الصلاحية. يرجى مسح رمز QR مرة أخرى.', 'error')
+                    return redirect(url_for('main.index'))
+
+                session_data = response.json()['data']
+
+                # Security Check 1: Verify table ID matches
+                if session_data['table_id'] != int(table_id):
+                    clear_whatsapp_session()
+                    flash('محاولة وصول غير مصرح بها. رقم الطاولة غير صحيح.', 'error')
+                    return redirect(url_for('main.index'))
+
+                # Security Check 2: Verify customer ID matches current user
+                if current_user.is_authenticated and current_user.user_id != session_data['customer_id']:
+                    clear_whatsapp_session()
+                    flash('محاولة وصول غير مصرح بها. العميل غير صحيح.', 'error')
+                    return redirect(url_for('main.index'))
+
+                # Security Check 3: Verify IP address consistency (optional)
+                stored_ip = session.get('whatsapp_session_ip')
+                current_ip = request.remote_addr
+                if stored_ip and stored_ip != current_ip:
+                    # Log suspicious activity but don't block (mobile networks change IPs)
+                    print(f"IP change detected for session {whatsapp_session_token}: {stored_ip} -> {current_ip}")
+
+                # Security Check 4: Check for session hijacking attempts
+                user_agent = request.headers.get('User-Agent', '')
+                stored_user_agent = session.get('whatsapp_session_user_agent')
+                if stored_user_agent and stored_user_agent != user_agent:
+                    print(f"User-Agent change detected for session {whatsapp_session_token}")
+
+                # Update session info with security data
+                session['whatsapp_customer_id'] = session_data['customer_id']
+                session['whatsapp_table_id'] = session_data['table_id']
+                session['whatsapp_customer_name'] = session_data['customer_name']
+                session['whatsapp_session_ip'] = current_ip
+                session['whatsapp_session_user_agent'] = user_agent
+                session['whatsapp_session_last_activity'] = datetime.utcnow().isoformat()
+
+                # Add session info to request context
+                request.table_session = {
+                    'table_id': session_data['table_id'],
+                    'customer_id': session_data['customer_id'],
+                    'customer_name': session_data['customer_name'],
+                    'session_token': whatsapp_session_token,
+                    'is_whatsapp_session': True,
+                    'expires_at': session_data['expires_at']
+                }
+
+                # Security Check 5: Prevent table switching via URL manipulation
+                url_table_id = request.args.get('table_id')
+                if url_table_id and int(url_table_id) != session_data['table_id']:
+                    flash('لا يمكنك الوصول لطاولة أخرى. يرجى استخدام رمز QR الخاص بطاولتك.', 'error')
+                    return redirect(url_for('customer.menu', table_id=session_data['table_id'], session=whatsapp_session_token))
+
+            except Exception as e:
+                print(f"Error validating WhatsApp session: {e}")
+                clear_whatsapp_session()
+                flash('حدث خطأ في التحقق من الجلسة.', 'error')
+                return redirect(url_for('main.index'))
+
+        else:
+            # Traditional session validation (existing functionality)
+            request.table_session = {
+                'is_whatsapp_session': False
+            }
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+def clear_whatsapp_session():
+    """Clear WhatsApp session data from Flask session"""
+    session.pop('whatsapp_session_token', None)
+    session.pop('whatsapp_customer_id', None)
+    session.pop('whatsapp_table_id', None)
+    session.pop('whatsapp_customer_name', None)
+    session.pop('whatsapp_session_ip', None)
+    session.pop('whatsapp_session_user_agent', None)
+    session.pop('whatsapp_session_last_activity', None)
+
+def require_whatsapp_session(f):
+    """Decorator that requires a valid WhatsApp session"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        whatsapp_session_token = session.get('whatsapp_session_token')
+
+        if not whatsapp_session_token:
+            flash('يجب الوصول عبر رمز QR الخاص بالطاولة.', 'error')
+            return redirect(url_for('main.index'))
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 @bp.route('/menu')
+@validate_table_session
 def menu():
     """Customer menu view with ratings"""
     # Load categories and menu items from database
@@ -179,6 +291,7 @@ def update_preferences():
         return jsonify({'success': False, 'message': 'Failed to update preferences'}), 500
 
 @bp.route('/checkout')
+@validate_table_session
 def checkout():
     """Customer checkout page"""
     return render_template('checkout.html')
@@ -219,6 +332,7 @@ def home():
 
 @bp.route('/orders')
 @login_required
+@validate_table_session
 def my_orders():
     """Customer orders page"""
     if not current_user.is_customer():

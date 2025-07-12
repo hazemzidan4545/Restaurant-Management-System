@@ -69,8 +69,8 @@ function safeShowNotification(title, message, type = 'info') {
     } else if (typeof showBaseNotification === 'function') {
         showBaseNotification(title, message, type);
     } else {
-        // Last resort fallback to alert
-        alert(`${title}: ${message}`);
+        // Visual feedback only - no browser alerts
+        console.log(`Notification: ${title}: ${message}`);
     }
 }
 

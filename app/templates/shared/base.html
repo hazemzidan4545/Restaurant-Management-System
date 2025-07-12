@@ -3032,149 +3032,7 @@
         }
     }
 
-    /* Toast notification styles for base template */
-    .base-toast-container {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10000;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        max-width: 350px;
-    }
-
-    .base-toast-notification {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-        transform: translateX(400px) scale(0.9);
-        opacity: 0;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        border-left: 4px solid #3b82f6;
-        position: relative;
-    }
-
-    .base-toast-notification.show {
-        transform: translateX(0) scale(1);
-        opacity: 1;
-    }
-
-    .base-toast-notification.hide {
-        transform: translateX(400px) scale(0.9);
-        opacity: 0;
-    }
-
-    .base-toast-notification.success {
-        border-left-color: #10b981;
-    }
-
-    .base-toast-notification.warning {
-        border-left-color: #f59e0b;
-    }
-
-    .base-toast-notification.error {
-        border-left-color: #ef4444;
-    }
-
-    .base-toast-notification.info {
-        border-left-color: #3b82f6;
-    }
-
-    .base-toast-content {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 14px 16px;
-    }
-
-    .base-toast-icon {
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        flex-shrink: 0;
-        margin-top: 1px;
-    }
-
-    .base-toast-notification.success .base-toast-icon {
-        background: rgba(16, 185, 129, 0.1);
-        color: #10b981;
-    }
-
-    .base-toast-notification.warning .base-toast-icon {
-        background: rgba(245, 158, 11, 0.1);
-        color: #f59e0b;
-    }
-
-    .base-toast-notification.error .base-toast-icon {
-        background: rgba(239, 68, 68, 0.1);
-        color: #ef4444;
-    }
-
-    .base-toast-notification.info .base-toast-icon {
-        background: rgba(59, 130, 246, 0.1);
-        color: #3b82f6;
-    }
-
-    .base-toast-text {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .base-toast-title {
-        font-weight: 600;
-        font-size: 13px;
-        color: #2c3e50;
-        margin-bottom: 2px;
-        line-height: 1.3;
-    }
-
-    .base-toast-message {
-        font-size: 12px;
-        color: #6b7280;
-        line-height: 1.4;
-    }
-
-    .base-toast-close {
-        background: none;
-        border: none;
-        color: #9ca3af;
-        cursor: pointer;
-        padding: 2px;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-        flex-shrink: 0;
-    }
-
-    .base-toast-close:hover {
-        background: rgba(156, 163, 175, 0.1);
-        color: #6b7280;
-    }
-
-    /* Mobile toast adjustments */
-    @media (max-width: 768px) {
-        .base-toast-container {
-            right: 10px;
-            left: 10px;
-            max-width: none;
-        }
-
-        .base-toast-notification {
-            transform: translateY(-100px) scale(0.9);
-        }
-
-        .base-toast-notification.show {
-            transform: translateY(0) scale(1);
-        }
-
-        .base-toast-notification.hide {
-            transform: translateY(-100px) scale(0.9);
-        }
-    }
+    /* Toast notification styles removed - using visual feedback only */
 
     </style>
 
@@ -3677,14 +3535,16 @@
         if (mobileLanguageLink) {
             mobileLanguageLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                showBaseNotification('Info', 'Language selection coming soon!', 'info');
+                // Language selection functionality - no toast notification
+                console.log('Language selection clicked');
             });
         }
 
         if (mobileLanguageLinkGuest) {
             mobileLanguageLinkGuest.addEventListener('click', function(e) {
                 e.preventDefault();
-                showBaseNotification('Info', 'Language selection coming soon!', 'info');
+                // Language selection functionality - no toast notification
+                console.log('Language selection clicked');
             });
         }
 
@@ -4240,7 +4100,7 @@
                             openCartModal();
                         }, 300);
 
-                        safeShowNotification('Success', 'Item updated successfully', 'success');
+                        // Visual feedback only - no toast notification
                         return;
                     }
                 }
@@ -4469,51 +4329,7 @@
     // Make reset function globally available
     window.resetItemDetailModal = resetItemDetailModal;
 
-    // Base notification function
-    function showBaseNotification(title, message, type = 'info') {
-        // Create toast if it doesn't exist
-        let toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-            toastContainer.style.zIndex = '1055';
-            document.body.appendChild(toastContainer);
-        }
-
-        // Create toast
-        const toastId = 'baseToast_' + Date.now();
-        const toastHtml = `
-            <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} text-white">
-                    <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
-                    <strong class="me-auto">${title}</strong>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body">
-                    ${message}
-                </div>
-            </div>
-        `;
-
-        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-
-        // Show toast
-        const toast = document.getElementById(toastId);
-        const bsToast = new bootstrap.Toast(toast, {
-            autohide: true,
-            delay: type === 'success' ? 4000 : 6000
-        });
-
-        // Remove toast from DOM after it's hidden
-        toast.addEventListener('hidden.bs.toast', () => {
-            toast.remove();
-        });
-
-        bsToast.show();
-    }
-
-    // Make notification function globally available
-    window.showBaseNotification = showBaseNotification;
+    // Toast notification system removed - using visual feedback only
 
     function handleSearchKeydown(e) {
         const resultsContainer = document.getElementById('navSearchResults');
@@ -4596,7 +4412,7 @@
                 icon: 'fas fa-info-circle',
                 title: 'Welcome!',
                 message: 'Welcome to our restaurant system',
-                time: 'Just now',
+                timestamp: new Date().toISOString(),
                 url: '#'
             }
         ];
@@ -4650,6 +4466,10 @@
             notifications.forEach(notification => {
                 const notificationItem = document.createElement('div');
                 notificationItem.className = 'nav-notification-item';
+
+                // Format timestamp to local timezone
+                const timeDisplay = formatNotificationTime(notification.timestamp || notification.time);
+
                 notificationItem.innerHTML = `
                     <div class="nav-notification-icon ${notification.color || 'info'}">
                         <i class="${notification.icon}"></i>
@@ -4657,7 +4477,7 @@
                     <div class="nav-notification-content">
                         <div class="nav-notification-title">${notification.title}</div>
                         <div class="nav-notification-message">${notification.message}</div>
-                        <div class="nav-notification-time">${notification.time}</div>
+                        <div class="nav-notification-time">${timeDisplay}</div>
                     </div>
                 `;
 
@@ -4694,7 +4514,7 @@
             }
         });
 
-        showBaseNotification('Notifications', 'All notifications marked as read', 'success');
+        // No toast notification - just visual feedback
     }
 
     function clearAllBaseNotifications() {
@@ -4721,7 +4541,7 @@
             `;
 
             notificationBadge.style.display = 'none';
-            showBaseNotification('Notifications', 'All notifications cleared', 'success');
+            // No toast notification - just visual feedback
         }, items.length * 50 + 200);
     }
 
@@ -4736,6 +4556,36 @@
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+
+    // Format notification timestamp to local timezone
+    function formatNotificationTime(timestamp) {
+        if (!timestamp) return 'Unknown time';
+
+        try {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffMinutes < 1) {
+                return 'Just now';
+            } else if (diffMinutes < 60) {
+                return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+            } else if (diffHours < 24) {
+                return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+            } else if (diffDays < 7) {
+                return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+            } else {
+                // For older notifications, show the actual date in local timezone
+                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            }
+        } catch (error) {
+            console.error('Error formatting notification time:', error);
+            return 'Unknown time';
+        }
     }
 
     // Make functions globally available

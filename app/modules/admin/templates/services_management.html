@@ -1006,10 +1006,8 @@ function confirmDelete(serviceId, serviceName) {
         
     } else {
         console.error('Delete modal not found');
-        // Fallback to browser confirm
-        if (confirm(`Are you sure you want to delete the service "${serviceName}"? This action cannot be undone.`)) {
-            window.location.href = `/admin/services/delete/${serviceId}`;
-        }
+        // Visual feedback only - no browser alerts
+        console.log(`Delete service request: ${serviceName} (ID: ${serviceId})`);
     }
 }
 

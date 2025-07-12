@@ -39,6 +39,10 @@ class Config:
     # Redis settings for caching and real-time features
     REDIS_URL = os.environ.get('REDIS_URL') or 'redis://localhost:6379/0'
 
+    # WhatsApp Bot Integration
+    WHATSAPP_BOT_NUMBER = os.environ.get('WHATSAPP_BOT_NUMBER') or '201234567890'
+    WHATSAPP_API_URL = os.environ.get('WHATSAPP_API_URL') or 'http://localhost:3000'
+
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True

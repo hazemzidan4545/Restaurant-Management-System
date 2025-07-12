@@ -1207,6 +1207,10 @@
                         } else {
                             data.notifications.forEach(notification => {
                                 const notificationItem = document.createElement('li');
+
+                                // Format timestamp to local timezone
+                                const timeDisplay = formatNotificationTime(notification.timestamp);
+
                                 notificationItem.innerHTML = `
                                     <a class="dropdown-item p-0" href="${notification.url}" data-notification-id="${notification.id}">
                                         <div class="notification-item">
@@ -1216,7 +1220,7 @@
                                             <div class="notification-content">
                                                 <div class="notification-title">${notification.title}</div>
                                                 <div class="notification-message">${notification.message}</div>
-                                                <div class="notification-time">${notification.time}</div>
+                                                <div class="notification-time">${timeDisplay}</div>
                                             </div>
                                         </div>
                                     </a>
@@ -1288,8 +1292,7 @@
                 }
             });
 
-            // Show success toast
-            showNotification('Notifications', 'All notifications marked as read', 'success');
+            // Visual feedback only - no toast notification
 
             // Optional: API call to mark as read in backend
             // fetch('/admin/api/mark-notifications-read', { method: 'POST' });
@@ -1325,8 +1328,7 @@
                 badge.style.display = 'none';
                 badge.classList.remove('pulse-animation');
 
-                // Show success toast
-                showNotification('Notifications', 'All notifications cleared', 'success');
+                // Visual feedback only - no toast notification
             }, items.length * 50 + 200);
 
             // Optional: API call to clear notifications in backend
@@ -1341,92 +1343,14 @@
         setInterval(updateNotifications, 30000);
         setInterval(updateOrderNotifications, 30000);
 
-        // Enhanced Toast notification function
-        function showNotification(title, message, type = 'info', duration = 4000) {
-            const toastContainer = getOrCreateToastContainer();
-
-            const toast = document.createElement('div');
-            toast.className = `toast-notification toast-${type}`;
-
-            const iconMap = {
-                'success': 'fas fa-check-circle',
-                'warning': 'fas fa-exclamation-triangle',
-                'error': 'fas fa-times-circle',
-                'info': 'fas fa-info-circle'
-            };
-
-            toast.innerHTML = `
-                <div class="toast-content">
-                    <div class="toast-icon">
-                        <i class="${iconMap[type] || iconMap.info}"></i>
-                    </div>
-                    <div class="toast-text">
-                        <div class="toast-title">${title}</div>
-                        <div class="toast-message">${message}</div>
-                    </div>
-                    <button class="toast-close" onclick="closeToast(this)">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="toast-progress">
-                    <div class="toast-progress-bar" style="animation-duration: ${duration}ms;"></div>
-                </div>
-            `;
-
-            toastContainer.appendChild(toast);
-
-            // Show toast with animation
-            requestAnimationFrame(() => {
-                toast.classList.add('show');
-            });
-
-            // Auto-hide toast
-            const timeoutId = setTimeout(() => {
-                closeToast(toast.querySelector('.toast-close'));
-            }, duration);
-
-            // Store timeout ID for manual close
-            toast.dataset.timeoutId = timeoutId;
-        }
-
-        function getOrCreateToastContainer() {
-            let container = document.getElementById('toast-container');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'toast-container';
-                container.className = 'toast-container';
-                document.body.appendChild(container);
-            }
-            return container;
-        }
-
-        function closeToast(closeButton) {
-            const toast = closeButton.closest('.toast-notification');
-            if (!toast) return;
-
-            // Clear timeout
-            const timeoutId = toast.dataset.timeoutId;
-            if (timeoutId) {
-                clearTimeout(parseInt(timeoutId));
-            }
-
-            toast.classList.remove('show');
-            toast.classList.add('hide');
-
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }
+        // Toast notification system removed - using visual feedback only
 
         // Listen for new order events (if using WebSocket/Socket.IO)
         if (typeof io !== 'undefined') {
             const socket = io();
             socket.on('new_order', function(data) {
                 updateOrderNotifications();
-                // Show toast notification
-                showNotification('New Order', `Order #${data.order_id} received from ${data.customer_name}`, 'info');
+                // Visual feedback only - no toast notification
             });
         }
 
@@ -1492,6 +1416,36 @@
                 clearTimeout(timeout);
                 timeout = setTimeout(later, wait);
             };
+        }
+
+        // Format notification timestamp to local timezone
+        function formatNotificationTime(timestamp) {
+            if (!timestamp) return 'Unknown time';
+
+            try {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                if (diffMinutes < 1) {
+                    return 'Just now';
+                } else if (diffMinutes < 60) {
+                    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+                } else if (diffHours < 24) {
+                    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+                } else if (diffDays < 7) {
+                    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+                } else {
+                    // For older notifications, show the actual date in local timezone
+                    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                }
+            } catch (error) {
+                console.error('Error formatting notification time:', error);
+                return 'Unknown time';
+            }
         }
 
         // Enhanced Global search function
@@ -1709,166 +1663,9 @@
             100% { left: 100%; }
         }
 
-        /* Enhanced Toast notification styles */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-width: 400px;
-        }
+        /* Toast notification styles removed - using visual feedback only */
 
-        .toast-notification {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
-            transform: translateX(450px) scale(0.9);
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border-left: 4px solid #3b82f6;
-            position: relative;
-        }
 
-        .toast-notification.show {
-            transform: translateX(0) scale(1);
-            opacity: 1;
-        }
-
-        .toast-notification.hide {
-            transform: translateX(450px) scale(0.9);
-            opacity: 0;
-        }
-
-        .toast-notification.toast-success {
-            border-left-color: #10b981;
-        }
-
-        .toast-notification.toast-warning {
-            border-left-color: #f59e0b;
-        }
-
-        .toast-notification.toast-error {
-            border-left-color: #ef4444;
-        }
-
-        .toast-notification.toast-info {
-            border-left-color: #3b82f6;
-        }
-
-        .toast-content {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 16px 20px;
-        }
-
-        .toast-icon {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        .toast-success .toast-icon {
-            background: rgba(16, 185, 129, 0.1);
-            color: #10b981;
-        }
-
-        .toast-warning .toast-icon {
-            background: rgba(245, 158, 11, 0.1);
-            color: #f59e0b;
-        }
-
-        .toast-error .toast-icon {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-        }
-
-        .toast-info .toast-icon {
-            background: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
-        }
-
-        .toast-text {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .toast-title {
-            font-weight: 600;
-            font-size: 14px;
-            color: #2c3e50;
-            margin-bottom: 2px;
-            line-height: 1.3;
-        }
-
-        .toast-message {
-            font-size: 13px;
-            color: #6b7280;
-            line-height: 1.4;
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            color: #9ca3af;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-        }
-
-        .toast-close:hover {
-            background: rgba(156, 163, 175, 0.1);
-            color: #6b7280;
-        }
-
-        .toast-progress {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        .toast-progress-bar {
-            height: 100%;
-            background: currentColor;
-            width: 100%;
-            transform-origin: left;
-            animation: toastProgress linear forwards;
-        }
-
-        .toast-success .toast-progress-bar {
-            background: #10b981;
-        }
-
-        .toast-warning .toast-progress-bar {
-            background: #f59e0b;
-        }
-
-        .toast-error .toast-progress-bar {
-            background: #ef4444;
-        }
-
-        .toast-info .toast-progress-bar {
-            background: #3b82f6;
-        }
-
-        @keyframes toastProgress {
-            from { transform: scaleX(1); }
-            to { transform: scaleX(0); }
-        }
 
         /* Search result selection styles */
         .search-result-item.selected {
@@ -1908,26 +1705,7 @@
             color: #6b7280;
         }
 
-        /* Mobile responsive adjustments */
-        @media (max-width: 768px) {
-            .toast-container {
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
 
-            .toast-notification {
-                transform: translateY(-100px) scale(0.9);
-            }
-
-            .toast-notification.show {
-                transform: translateY(0) scale(1);
-            }
-
-            .toast-notification.hide {
-                transform: translateY(-100px) scale(0.9);
-            }
-        }
     </style>
 </body>
 </html>

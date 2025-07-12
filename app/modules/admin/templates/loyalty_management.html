@@ -31,11 +31,11 @@
                     <span class="stat-label">Active Members</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-number">{{ "{:,}"|format(total_points_distributed if total_points_distributed else 0) }}</span>
+                    <span class="stat-number">{{ (total_points_distributed if total_points_distributed else 0)|int }}</span>
                     <span class="stat-label">Points Distributed</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-number">{{ "{:,}"|format(total_points_redeemed if total_points_redeemed else 0) }}</span>
+                    <span class="stat-number">{{ (total_points_redeemed if total_points_redeemed else 0)|int }}</span>
                     <span class="stat-label">Points Redeemed</span>
                 </div>
             </div>

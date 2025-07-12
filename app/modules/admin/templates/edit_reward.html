@@ -388,25 +388,43 @@ document.querySelector('form').addEventListener('submit', function(e) {
 });
 
 function deleteReward() {
-    if (confirm('Are you sure you want to delete this reward? This action cannot be undone.')) {
-        fetch('{{ url_for("admin.delete_reward", reward_id=reward.reward_id) }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                alert('Reward deleted successfully');
-                window.location.href = '{{ url_for("admin.rewards_management") }}';
-            } else {
-                alert('Error deleting reward');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred');
-        });
+    // Use proper modal confirmation instead of browser confirm
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    if (deleteModal) {
+        // Set up the delete action
+        const confirmBtn = deleteModal.querySelector('.btn-danger');
+        if (confirmBtn) {
+            confirmBtn.onclick = function() {
+                fetch('{{ url_for("admin.delete_reward", reward_id=reward.reward_id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Reward deleted successfully');
+                        window.location.href = '{{ url_for("admin.rewards_management") }}';
+                    } else {
+                        console.error('Error deleting reward');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(deleteModal);
+                if (modal) modal.hide();
+            };
+        }
+
+        // Show modal
+        const modal = new bootstrap.Modal(deleteModal);
+        modal.show();
+    } else {
+        // Visual feedback only - no browser alerts
+        console.log('Delete reward request');
     }
 }
 

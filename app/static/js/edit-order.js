@@ -215,7 +215,7 @@ function openEditOrderModal(orderId) {
             if (window.RestaurantApp && window.RestaurantApp.showNotification) {
                 window.RestaurantApp.showNotification('Error', 'Failed to load order details: ' + error.message, 'danger');
             } else {
-                alert('Error: Failed to load order details: ' + error.message);
+                console.error('Error: Failed to load order details: ' + error.message);
             }
         });
 }
@@ -425,7 +425,7 @@ function saveOrderEdit() {
         if (window.RestaurantApp && window.RestaurantApp.showNotification) {
             window.RestaurantApp.showNotification('Error', errorMessage, 'danger');
         } else {
-            alert('Error: ' + errorMessage);
+            console.error('Error: ' + errorMessage);
         }
     });
 }

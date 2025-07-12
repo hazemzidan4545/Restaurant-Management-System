@@ -5,11 +5,19 @@
 
 {% block extra_css %}
 <style>
+        /* CSS Variables */
+        :root {
+            --primary-yellow: #f3cd21;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+        }
 
         /* QR Codes Grid Styles */
         .qr-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 25px;
             margin-top: 20px;
         }
@@ -18,7 +26,7 @@
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
             border-radius: 20px;
-            padding: 30px 20px;
+            padding: 20px;
             text-align: center;
             box-shadow: var(--card-shadow);
             border: 1px solid var(--glass-border);
@@ -26,11 +34,11 @@
             position: relative;
             transform: translateZ(0);
             will-change: transform, box-shadow;
-            min-height: 180px;
+            min-height: 400px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            justify-content: flex-start;
+            align-items: stretch;
         }
 
         .qr-card:hover {
@@ -98,6 +106,176 @@
         .qr-card:hover .qr-icon {
             transform: scale(1.1) translateZ(0);
             box-shadow: 0 6px 25px rgba(243, 205, 33, 0.4);
+        }
+
+        /* QR Tabs */
+        .qr-tabs {
+            display: flex;
+            margin-top: 15px;
+            margin-bottom: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .qr-tab {
+            flex: 1;
+            padding: 10px 12px;
+            border: none;
+            background: transparent;
+            color: #6d6c6c;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid transparent;
+        }
+
+        .qr-tab.active {
+            background: var(--primary-yellow);
+            color: #000;
+            font-weight: 600;
+            border: 1px solid var(--primary-yellow);
+            box-shadow: 0 2px 8px rgba(243, 205, 33, 0.3);
+        }
+
+        .qr-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.2);
+            color: #000000;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* QR Stats */
+        .qr-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .qr-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: rgba(0, 0, 0, 0.95);
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .qr-stat i {
+            font-size: 0.8rem;
+            color: var(--primary-yellow);
+        }
+
+        .qr-stat span {
+            color: #000000;
+            font-weight: 600;
+        }
+
+        /* Ensure visibility of key elements */
+        .qr-tabs, .qr-stats {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: flex !important;
+        }
+
+        /* Force visibility with high specificity */
+        .qr-card .qr-tabs {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .qr-card .qr-stats {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        /* WhatsApp Action Button */
+        .action-btn.whatsapp {
+            background: #25d366;
+            color: white;
+        }
+
+        .action-btn.whatsapp:hover {
+            background: #128c7e;
+            transform: scale(1.1);
+        }
+
+        /* QR Code Container */
+        .qr-code-container {
+            position: relative;
+            min-height: 200px;
+            margin-bottom: 15px;
+        }
+
+        .qr-code-image {
+            width: 100%;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .qr-code-image img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+        }
+
+        .qr-code-image.active {
+            display: flex !important;
+        }
+
+        .qr-code-image.hidden {
+            display: none !important;
+        }
+
+        /* QR Loading State */
+        .qr-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2rem;
+        }
+
+        .qr-loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+
+        /* QR Error State */
+        .qr-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 20px;
         }
 
         .qr-icon i {
@@ -619,6 +797,14 @@
                 <i class="fas fa-download"></i>
                 <span>Download All</span>
             </button>
+            <button class="header-btn header-btn-secondary" onclick="generateAllQR()">
+                <i class="fas fa-sync"></i>
+                <span>Regenerate All</span>
+            </button>
+            <button class="header-btn header-btn-secondary" onclick="showQRSettings()">
+                <i class="fas fa-cog"></i>
+                <span>QR Settings</span>
+            </button>
             <button class="header-btn header-btn-primary" onclick="generateNewQR()">
                 <i class="fas fa-plus"></i>
                 <span>Generate QR</span>
@@ -641,16 +827,48 @@
             <button class="action-btn" title="Regenerate QR" onclick="regenerateQR('{{ table.table_id }}', event)">
                 <i class="fas fa-sync"></i>
             </button>
+            <button class="action-btn whatsapp" title="WhatsApp QR" onclick="generateWhatsAppQR('{{ table.table_id }}')">
+                <i class="fab fa-whatsapp"></i>
+            </button>
         </div>
-        <div class="qr-code-image" id="qr-code-{{ table.table_id }}">
-            <!-- QR Code will be generated here -->
+
+        <div class="qr-code-container">
+            <div class="qr-code-image" id="qr-code-menu-{{ table.table_id }}">
+                <!-- Menu QR Code will be generated here -->
+            </div>
+            <div class="qr-code-image" id="qr-code-whatsapp-{{ table.table_id }}" style="display: none;">
+                <!-- WhatsApp QR Code will be generated here -->
+            </div>
         </div>
+
         <h3 class="qr-title">Table {{ table.table_number }}</h3>
         <div class="table-info">
             <span class="table-status {{ table.status }}">
                 {{ table.status|title }}
             </span>
             <span class="table-capacity">{{ table.capacity }} seats</span>
+        </div>
+
+        <!-- QR Stats -->
+        <div class="qr-stats" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
+            <div class="qr-stat" style="display: flex !important; opacity: 1 !important;">
+                <i class="fas fa-eye"></i>
+                <span id="scan-count-{{ table.table_id }}">0</span>
+            </div>
+            <div class="qr-stat" style="display: flex !important; opacity: 1 !important;">
+                <i class="fas fa-clock"></i>
+                <span id="last-scan-{{ table.table_id }}">Never</span>
+            </div>
+        </div>
+
+        <!-- QR Type Tabs -->
+        <div class="qr-tabs" style="display: flex !important; opacity: 1 !important; visibility: visible !important;">
+            <button class="qr-tab active" data-type="menu" onclick="switchQRType('{{ table.table_id }}', 'menu')" style="display: flex !important; opacity: 1 !important;">
+                <i class="fas fa-utensils"></i> Menu
+            </button>
+            <button class="qr-tab" data-type="whatsapp" onclick="switchQRType('{{ table.table_id }}', 'whatsapp')" style="display: flex !important; opacity: 1 !important;">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+            </button>
         </div>
     </div>
     {% endfor %}
@@ -725,6 +943,86 @@
         </div>
     </div>
 </div>
+
+<!-- QR Settings Modal -->
+<div class="modal fade" id="qrSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR Code Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>QR Code Appearance</h6>
+                        <div class="mb-3">
+                            <label for="qr_size" class="form-label">QR Code Size</label>
+                            <select class="form-control" id="qr_size">
+                                <option value="200">Small (200x200)</option>
+                                <option value="300" selected>Medium (300x300)</option>
+                                <option value="400">Large (400x400)</option>
+                                <option value="500">Extra Large (500x500)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="qr_error_correction" class="form-label">Error Correction</label>
+                            <select class="form-control" id="qr_error_correction">
+                                <option value="L">Low (7%)</option>
+                                <option value="M" selected>Medium (15%)</option>
+                                <option value="Q">Quartile (25%)</option>
+                                <option value="H">High (30%)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="qr_border" class="form-label">Border Size</label>
+                            <input type="range" class="form-range" id="qr_border" min="1" max="10" value="4">
+                            <div class="d-flex justify-content-between">
+                                <small>1</small>
+                                <small>10</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>WhatsApp Integration</h6>
+                        <div class="mb-3">
+                            <label for="whatsapp_number" class="form-label">WhatsApp Business Number</label>
+                            <input type="text" class="form-control" id="whatsapp_number" placeholder="+1234567890">
+                        </div>
+                        <div class="mb-3">
+                            <label for="whatsapp_message" class="form-label">Default Message</label>
+                            <textarea class="form-control" id="whatsapp_message" rows="3" placeholder="TABLE_{table_number}_QR001">TABLE_{table_number}_QR001</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include_table_info" checked>
+                                <label class="form-check-label" for="include_table_info">
+                                    Include table information in QR code
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Preview -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6>Preview</h6>
+                        <div class="text-center">
+                            <div id="qr-preview" style="display: inline-block; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                                <!-- QR Preview will be generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="applyQRSettings()">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -734,38 +1032,148 @@
     // QR Code generation and table management functionality
     let currentTableId = null;
 
-    // Generate QR code for a table - now using backend
-    function generateQRCode(tableId, tableNumber) {
-        const qrContainer = document.getElementById(`qr-code-${tableId}`);
+    // Generate QR code for a table - enhanced with type support
+    function generateQRCode(tableId, tableNumber, qrType = 'menu') {
+        const qrContainer = document.getElementById(`qr-code-${qrType}-${tableId}`);
         if (!qrContainer) return;
 
         // Show loading state
         qrContainer.innerHTML = '<div class="qr-loading"><i class="fas fa-spinner fa-spin"></i></div>';
-        
+
         // Fetch QR code from backend
-        fetch(`/admin/api/qr-codes/${tableId}/image`)
+        fetch(`/admin/api/qr-codes/${tableId}/image?type=${qrType}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.qr_image) {
                     // Display the QR code image
-                    qrContainer.innerHTML = `<img src="${data.qr_image}" alt="QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
+                    qrContainer.innerHTML = `<img src="${data.qr_image}" alt="${qrType} QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
+                    updateQRStats(tableId, data.scan_count, data.last_scanned);
                 } else {
                     // Generate new QR code if not found
-                    generateNewQRForTable(tableId, tableNumber);
+                    generateNewQRForTable(tableId, tableNumber, qrType);
                 }
             })
             .catch(error => {
                 console.error('Error fetching QR code:', error);
-                generateNewQRForTable(tableId, tableNumber);
+                generateNewQRForTable(tableId, tableNumber, qrType);
             });
     }
 
-    // Generate new QR code using backend
-    function generateNewQRForTable(tableId, tableNumber) {
-        const qrContainer = document.getElementById(`qr-code-${tableId}`);
+    // Switch between QR types
+    function switchQRType(tableId, qrType) {
+        console.log(`Switching QR type for table ${tableId} to ${qrType}`);
+
+        // Update tab states
+        const tabs = document.querySelectorAll(`[data-table-id="${tableId}"] .qr-tab`);
+        tabs.forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.type === qrType);
+        });
+
+        // Show/hide QR containers with proper CSS classes
+        const menuContainer = document.getElementById(`qr-code-menu-${tableId}`);
+        const whatsappContainer = document.getElementById(`qr-code-whatsapp-${tableId}`);
+
+        if (!menuContainer || !whatsappContainer) {
+            console.error(`QR containers not found for table ${tableId}`);
+            return;
+        }
+
+        if (qrType === 'menu') {
+            menuContainer.classList.add('active');
+            menuContainer.classList.remove('hidden');
+            menuContainer.style.display = 'flex';
+
+            whatsappContainer.classList.remove('active');
+            whatsappContainer.classList.add('hidden');
+            whatsappContainer.style.display = 'none';
+
+            // Generate menu QR if not exists
+            if (!menuContainer.querySelector('img')) {
+                generateQRCode(tableId, null, 'menu');
+            }
+        } else if (qrType === 'whatsapp') {
+            menuContainer.classList.remove('active');
+            menuContainer.classList.add('hidden');
+            menuContainer.style.display = 'none';
+
+            whatsappContainer.classList.add('active');
+            whatsappContainer.classList.remove('hidden');
+            whatsappContainer.style.display = 'flex';
+
+            // Generate WhatsApp QR if not exists
+            if (!whatsappContainer.querySelector('img')) {
+                generateWhatsAppQR(tableId);
+            }
+        }
+    }
+
+    // Generate new QR code using backend - enhanced with type support
+    function generateNewQRForTable(tableId, tableNumber, qrType = 'menu') {
+        const qrContainer = document.getElementById(`qr-code-${qrType}-${tableId}`);
         if (!qrContainer) return;
 
-        fetch(`/admin/api/qr-codes/generate/${tableId}`, {
+        const endpoint = qrType === 'whatsapp'
+            ? `/admin/api/qr-codes/whatsapp/${tableId}`
+            : `/admin/api/qr-codes/generate/${tableId}`;
+
+        // Prepare request body with WhatsApp settings if needed
+        let requestBody = {};
+        if (qrType === 'whatsapp') {
+            // Get WhatsApp settings from localStorage or use defaults
+            const savedSettings = localStorage.getItem('qrSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                requestBody = {
+                    whatsapp_number: settings.whatsappNumber || '+201234567890',
+                    whatsapp_message: settings.whatsappMessage || 'TABLE_{table_number}_QR001'
+                };
+            } else {
+                requestBody = {
+                    whatsapp_number: '+201234567890',
+                    whatsapp_message: 'TABLE_{table_number}_QR001'
+                };
+            }
+        }
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: Object.keys(requestBody).length > 0 ? JSON.stringify(requestBody) : undefined
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && (data.qr_image || data.base64)) {
+                const qrImage = data.qr_image || data.base64;
+                qrContainer.innerHTML = `<img src="${qrImage}" alt="${qrType} QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
+                showNotification(`${qrType} QR code generated successfully`, 'success');
+            } else {
+                qrContainer.innerHTML = '<div class="qr-error">Failed to generate QR</div>';
+                console.error('QR Code generation failed:', data.message);
+                showNotification(`Failed to generate ${qrType} QR code: ${data.message}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error generating QR code:', error);
+            qrContainer.innerHTML = '<div class="qr-error">Failed to generate QR</div>';
+            showNotification(`Error generating ${qrType} QR code`, 'error');
+        });
+    }
+
+    // Generate WhatsApp QR code
+    function generateWhatsAppQR(tableId) {
+        generateNewQRForTable(tableId, null, 'whatsapp');
+    }
+
+    // Generate all QR codes
+    function generateAllQR() {
+        const button = event.target.closest('.header-btn');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Generating...</span>';
+        button.disabled = true;
+
+        fetch('/admin/api/qr-codes/generate-all', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -773,17 +1181,101 @@
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.qr_image) {
-                qrContainer.innerHTML = `<img src="${data.qr_image}" alt="QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
+            if (data.success) {
+                showNotification(`Generated QR codes for ${data.created_count} tables`, 'success');
+                // Refresh the page to show new QR codes
+                setTimeout(() => location.reload(), 1000);
             } else {
-                qrContainer.innerHTML = '<div class="qr-error">Failed to generate QR</div>';
-                console.error('QR Code generation failed:', data.message);
+                showNotification(`Failed to generate QR codes: ${data.message}`, 'error');
             }
         })
         .catch(error => {
-            console.error('Error generating QR code:', error);
-            qrContainer.innerHTML = '<div class="qr-error">Failed to generate QR</div>';
+            console.error('Error generating all QR codes:', error);
+            showNotification('Error generating QR codes', 'error');
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
         });
+    }
+
+    // Update QR statistics
+    function updateQRStats(tableId, scanCount, lastScanned) {
+        console.log(`Updating stats for table ${tableId}: scans=${scanCount}, lastScanned=${lastScanned}`);
+
+        const scanCountElement = document.getElementById(`scan-count-${tableId}`);
+        const lastScanElement = document.getElementById(`last-scan-${tableId}`);
+        const statsContainer = document.querySelector(`[data-table-id="${tableId}"] .qr-stats`);
+
+        if (scanCountElement) {
+            scanCountElement.textContent = scanCount || 0;
+            console.log(`Updated scan count for table ${tableId}: ${scanCountElement.textContent}`);
+        } else {
+            console.error(`Scan count element not found for table ${tableId}`);
+        }
+
+        if (lastScanElement) {
+            if (lastScanned) {
+                const date = new Date(lastScanned);
+                lastScanElement.textContent = date.toLocaleDateString();
+            } else {
+                lastScanElement.textContent = 'Never';
+            }
+            console.log(`Updated last scan for table ${tableId}: ${lastScanElement.textContent}`);
+        } else {
+            console.error(`Last scan element not found for table ${tableId}`);
+        }
+
+        // Ensure stats container is visible
+        if (statsContainer) {
+            statsContainer.style.display = 'flex';
+            statsContainer.style.opacity = '1';
+            console.log(`Made stats container visible for table ${tableId}`);
+        } else {
+            console.error(`Stats container not found for table ${tableId}`);
+        }
+    }
+
+    // Load QR statistics for a table
+    function loadQRStats(tableId) {
+        console.log(`Loading QR stats for table ${tableId}`);
+
+        fetch(`/admin/api/qr-codes/${tableId}/stats`)
+            .then(response => {
+                console.log(`Stats response for table ${tableId}:`, response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log(`Stats data for table ${tableId}:`, data);
+
+                if (data.success) {
+                    // Update stats for both menu and WhatsApp QR codes
+                    let totalScans = 0;
+                    let lastScanned = null;
+
+                    if (data.stats && data.stats.length > 0) {
+                        data.stats.forEach(stat => {
+                            totalScans += stat.scan_count || 0;
+                            if (stat.last_scanned && (!lastScanned || new Date(stat.last_scanned) > new Date(lastScanned))) {
+                                lastScanned = stat.last_scanned;
+                            }
+                        });
+                        console.log(`Table ${tableId} - Total scans: ${totalScans}, Last scanned: ${lastScanned}`);
+                    } else {
+                        console.log(`No stats found for table ${tableId}`);
+                    }
+
+                    updateQRStats(tableId, totalScans, lastScanned);
+                } else {
+                    console.error(`Failed to load stats for table ${tableId}:`, data.message);
+                    updateQRStats(tableId, 0, null);
+                }
+            })
+            .catch(error => {
+                console.error(`Error loading QR stats for table ${tableId}:`, error);
+                // Set default values but make them visible
+                updateQRStats(tableId, 0, null);
+            });
     }
 
     // Download QR code for a table - now using backend generated QR
@@ -802,12 +1294,11 @@
                     link.click();
                     document.body.removeChild(link);
                 } else {
-                    alert('QR code not found. Please generate it first.');
+                    console.log('QR code not found. Please generate it first.');
                 }
             })
             .catch(error => {
                 console.error('Error downloading QR code:', error);
-                alert('Error downloading QR code');
             });
     }
 
@@ -815,7 +1306,7 @@
     function downloadAllQR() {
         const tables = document.querySelectorAll('[data-table-id]');
         if (tables.length === 0) {
-            alert('No tables found to generate QR codes for');
+            console.log('No tables found to generate QR codes for');
             return;
         }
 
@@ -860,11 +1351,11 @@
                                 button.disabled = false;
                                 
                                 if (hasErrors) {
-                                    alert('Some QR codes were missing. Please generate missing QR codes first.');
+                                    console.log('Some QR codes were missing. Please generate missing QR codes first.');
                                 }
                             });
                         } else {
-                            alert('No QR codes found. Please generate QR codes first.');
+                            console.log('No QR codes found. Please generate QR codes first.');
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
@@ -878,7 +1369,7 @@
                     if (completed === tables.length) {
                         button.innerHTML = originalText;
                         button.disabled = false;
-                        alert('Error downloading QR codes. Please try again.');
+                        console.error('Error downloading QR codes. Please try again.');
                     }
                 });
         });
@@ -1032,77 +1523,49 @@
         }
     }
 
-    // Regenerate QR code - using backend
+    // Regenerate QR code - enhanced for tab-based system
     function regenerateQR(tableId, event) {
-        const tableCard = document.querySelector(`[data-table-id="${tableId}"]`);
-        const tableNumber = tableCard.querySelector('.qr-title').textContent.replace('Table ', '');
-        const qrContainer = document.getElementById(`qr-code-${tableId}`);
-        
-        // Show loading state
-        if (qrContainer) {
-            qrContainer.innerHTML = '<div class="qr-loading"><i class="fas fa-spinner fa-spin"></i></div>';
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
         }
-        
-        // Generate new QR code via backend
-        fetch(`/admin/api/qr-codes/generate/${tableId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+
+        console.log(`Regenerating QR codes for table ${tableId}`);
+
+        // Get current active tab
+        const activeTab = document.querySelector(`[data-table-id="${tableId}"] .qr-tab.active`);
+        const currentQRType = activeTab ? activeTab.dataset.type : 'menu';
+
+        // Get both containers
+        const menuContainer = document.getElementById(`qr-code-menu-${tableId}`);
+        const whatsappContainer = document.getElementById(`qr-code-whatsapp-${tableId}`);
+
+        // Show loading state for current active container
+        const activeContainer = currentQRType === 'menu' ? menuContainer : whatsappContainer;
+        if (activeContainer) {
+            activeContainer.innerHTML = '<div class="qr-loading"><i class="fas fa-spinner fa-spin"></i> Regenerating...</div>';
+        }
+
+        // Show button feedback
+        if (event) {
+            const button = event.target.closest('.action-btn');
+            if (button) {
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                button.disabled = true;
+
+                // Reset button after operation
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                    button.disabled = false;
+                }, 3000);
             }
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (response.status === 403) {
-                throw new Error('Authentication required. Please log in as admin.');
-            }
-            if (response.status === 404) {
-                throw new Error('Table not found.');
-            }
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Response data:', data);
-            if (data.success && data.qr_image) {
-                if (qrContainer) {
-                    qrContainer.innerHTML = `<img src="${data.qr_image}" alt="QR Code" style="width: 100%; height: 100%; object-fit: contain;">`;
-                }
-                
-                // Show success message if event and button are available
-                if (event) {
-                    const button = event.target.closest('.action-btn');
-                    if (button) {
-                        const originalIcon = button.innerHTML;
-                        button.innerHTML = '<i class="fas fa-check"></i>';
-                        button.style.background = '#10b981';
-                        
-                        setTimeout(() => {
-                            button.innerHTML = originalIcon;
-                            button.style.background = '';
-                        }, 2000);
-                    }
-                } else {
-                    // Alternative visual feedback when no event is available
-                    console.log('QR code regenerated successfully for table', tableNumber);
-                }
-            } else {
-                if (qrContainer) {
-                    qrContainer.innerHTML = '<div class="qr-error">Failed to generate QR</div>';
-                }
-                const errorMsg = data.message || 'Unknown error occurred';
-                console.error('QR Generation failed:', errorMsg);
-                alert('Error regenerating QR code: ' + errorMsg);
-            }
-        })
-        .catch(error => {
-            console.error('Error regenerating QR code:', error);
-            if (qrContainer) {
-                qrContainer.innerHTML = '<div class="qr-error">Failed to generate QR</div>';
-            }
-            alert('Error regenerating QR code: ' + error.message);
-        });
+        }
+
+        // Regenerate the current QR type
+        generateNewQRForTable(tableId, null, currentQRType);
+
+        showNotification(`Regenerating ${currentQRType} QR code for table ${tableId}`, 'info');
     }
 
     // Generate new QR (for header button) - now includes generate all option
@@ -1141,21 +1604,121 @@
                 // Refresh the page to show updated QR codes
                 location.reload();
             } else {
-                alert('Error generating QR codes: ' + data.message);
+                console.error('Error generating QR codes: ' + data.message);
                 button.innerHTML = originalText;
                 button.disabled = false;
             }
         })
         .catch(error => {
             console.error('Error generating QR codes:', error);
-            alert('Error generating QR codes');
             button.innerHTML = originalText;
             button.disabled = false;
         });
     }
 
+    // Show QR Settings Modal
+    function showQRSettings() {
+        const modal = new bootstrap.Modal(document.getElementById('qrSettingsModal'));
+        modal.show();
+
+        // Generate preview QR
+        updateQRPreview();
+    }
+
+    // Apply QR Settings
+    function applyQRSettings() {
+        const settings = {
+            size: document.getElementById('qr_size').value,
+            errorCorrection: document.getElementById('qr_error_correction').value,
+            border: document.getElementById('qr_border').value,
+            whatsappNumber: document.getElementById('whatsapp_number').value,
+            whatsappMessage: document.getElementById('whatsapp_message').value,
+            includeTableInfo: document.getElementById('include_table_info').checked
+        };
+
+        // Save settings to localStorage
+        localStorage.setItem('qrSettings', JSON.stringify(settings));
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('qrSettingsModal'));
+        modal.hide();
+
+        showNotification('QR settings applied successfully', 'success');
+
+        // Regenerate all QR codes with new settings
+        generateAllQR();
+    }
+
+    // Update QR Preview
+    function updateQRPreview() {
+        const previewContainer = document.getElementById('qr-preview');
+        const size = document.getElementById('qr_size').value;
+        const errorCorrection = document.getElementById('qr_error_correction').value;
+        const border = document.getElementById('qr_border').value;
+
+        // Generate sample QR code
+        const sampleUrl = `${window.location.origin}/table/1`;
+
+        QRCode.toCanvas(sampleUrl, {
+            width: Math.min(200, parseInt(size)),
+            errorCorrectionLevel: errorCorrection,
+            margin: parseInt(border),
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        }, function (error, canvas) {
+            if (error) {
+                console.error('QR Preview error:', error);
+                previewContainer.innerHTML = '<div class="text-muted">Preview unavailable</div>';
+            } else {
+                previewContainer.innerHTML = '';
+                previewContainer.appendChild(canvas);
+            }
+        });
+    }
+
+    // Load QR Settings
+    function loadQRSettings() {
+        const savedSettings = localStorage.getItem('qrSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+
+            document.getElementById('qr_size').value = settings.size || '300';
+            document.getElementById('qr_error_correction').value = settings.errorCorrection || 'M';
+            document.getElementById('qr_border').value = settings.border || '4';
+            document.getElementById('whatsapp_number').value = settings.whatsappNumber || '';
+            document.getElementById('whatsapp_message').value = settings.whatsappMessage || 'Hello! I\'m at table {table_number} and would like to place an order.';
+            document.getElementById('include_table_info').checked = settings.includeTableInfo !== false;
+        }
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
+        // Load QR settings
+        loadQRSettings();
+
         // Ensure modal is hidden on page load
         const modalElement = document.getElementById('tableModal');
         if (modalElement) {
@@ -1163,12 +1726,44 @@
             modalElement.classList.remove('show');
         }
 
-        // Generate QR codes for all existing tables
+        // Generate QR codes for all existing tables (menu type by default)
         document.querySelectorAll('[data-table-id]').forEach(tableCard => {
             const tableId = tableCard.dataset.tableId;
             const tableNumber = tableCard.querySelector('.qr-title').textContent.replace('Table ', '');
-            generateQRCode(tableId, tableNumber);
+
+            console.log(`Initializing table ${tableId}`);
+
+            // Check if tabs and stats exist
+            const tabs = tableCard.querySelector('.qr-tabs');
+            const stats = tableCard.querySelector('.qr-stats');
+
+            console.log(`Table ${tableId} - Tabs found: ${!!tabs}, Stats found: ${!!stats}`);
+
+            if (tabs) {
+                console.log(`Table ${tableId} tabs HTML:`, tabs.outerHTML);
+            }
+
+            if (stats) {
+                console.log(`Table ${tableId} stats HTML:`, stats.outerHTML);
+            }
+
+            generateQRCode(tableId, tableNumber, 'menu');
+
+            // Load QR stats for this table
+            loadQRStats(tableId);
         });
+
+        // Add event listeners for QR settings modal
+        const qrSettingsModal = document.getElementById('qrSettingsModal');
+        if (qrSettingsModal) {
+            // Update preview when settings change
+            ['qr_size', 'qr_error_correction', 'qr_border'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('change', updateQRPreview);
+                }
+            });
+        }
 
         // Search functionality
         const searchInput = document.querySelector('.search-input');

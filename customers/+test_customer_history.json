@@ -1,0 +1,17 @@
+{
+  "phone": "+test_customer_history",
+  "first_contact": "2025-07-09T15:56:58.930581",
+  "has_been_greeted": false,
+  "conversations": [
+    {
+      "timestamp": "2025-07-09T15:56:58.930581",
+      "customer_message": "Hello, I want to know about your restaurant",
+      "ai_response": "Welcome to our restaurant! We offer delicious food and great service."
+    },
+    {
+      "timestamp": "2025-07-09T15:56:58.941093",
+      "customer_message": "What are your prices?",
+      "ai_response": "Here are our menu prices: Main dishes start from 50 EGP..."
+    }
+  ]
+}

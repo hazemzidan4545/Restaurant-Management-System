@@ -560,30 +560,48 @@ function toggleRewardStatus(rewardId) {
 }
 
 function deleteReward(rewardId) {
-    if (confirm('Are you sure you want to delete this reward? This action cannot be undone.')) {
-        fetch(`{{ url_for("admin.delete_reward", reward_id=0) }}`.replace('0', rewardId), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (response.ok) {
-                location.reload();
-            } else {
-                alert('Error deleting reward');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred');
-        });
+    // Use proper modal confirmation instead of browser confirm
+    const deleteModal = document.getElementById('deleteConfirmModal');
+    if (deleteModal) {
+        // Set up the delete action
+        const confirmBtn = deleteModal.querySelector('.btn-danger');
+        if (confirmBtn) {
+            confirmBtn.onclick = function() {
+                fetch(`{{ url_for("admin.delete_reward", reward_id=0) }}`.replace('0', rewardId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        console.error('Error deleting reward');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(deleteModal);
+                if (modal) modal.hide();
+            };
+        }
+
+        // Show modal
+        const modal = new bootstrap.Modal(deleteModal);
+        modal.show();
+    } else {
+        // Visual feedback only - no browser alerts
+        console.log(`Delete reward request: ${rewardId}`);
     }
 }
 
 function exportRewards() {
     // This would typically download a CSV or Excel file
-    alert('Export functionality would be implemented here');
+    console.log('Export functionality would be implemented here');
 }
 
 // Search and filter functionality

@@ -647,7 +647,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof showBaseNotification === 'function') {
                 showBaseNotification('Info', 'No new notifications', 'info');
             } else {
-                alert('No new notifications');
+                // Visual feedback only - no browser alerts
+                console.log('No new notifications');
             }
         });
     }

@@ -19,6 +19,7 @@ class User(UserMixin, db.Model):
     profile_img = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    language_preference = db.Column(db.String(5), default='ar')  # 'ar' for Arabic, 'en' for English
     
     # Relationships
     orders = db.relationship('Order', backref='customer', lazy='dynamic')
@@ -291,8 +292,9 @@ class MenuItem(db.Model):
         popular_items = db.session.query(
             cls,
             func.sum(OrderItem.quantity).label('total_ordered')
-        ).join(OrderItem).filter(
-            cls.status == 'available'
+        ).join(OrderItem).join(Order, OrderItem.order_id == Order.order_id).filter(
+            cls.status == 'available',
+            Order.status == 'completed'
         ).group_by(cls.item_id).order_by(
             func.sum(OrderItem.quantity).desc()
         ).limit(limit).all()
@@ -315,10 +317,11 @@ class MenuItem(db.Model):
             cls,
             func.sum(OrderItem.quantity).label('total_ordered')
         ).join(OrderItem).join(Order, OrderItem.order_id == Order.order_id)
-        
-        # Apply filters
+
+        # Apply filters - only include completed orders
         query = query.filter(cls.status == 'available')
-        
+        query = query.filter(Order.status == 'completed')
+
         # Apply date filtering if specified
         if start_date:
             query = query.filter(Order.order_time >= start_date)
@@ -855,7 +858,7 @@ class QRCode(db.Model):
     qr_id = db.Column(db.Integer, primary_key=True)
     table_id = db.Column(db.Integer, db.ForeignKey('tables.table_id'), nullable=False)
     url = db.Column(db.String(255), nullable=False)
-    qr_type = db.Column(db.Enum('menu', 'login', 'payment', name='qr_types'),
+    qr_type = db.Column(db.Enum('menu', 'login', 'payment', 'whatsapp', name='qr_types'),
                        nullable=False, default='menu')
     is_active = db.Column(db.Boolean, default=True)
     qr_image_data = db.Column(db.Text, nullable=True)  # Base64 encoded QR code image
@@ -927,6 +930,7 @@ class TableSession(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     device_info = db.Column(db.Text, nullable=True)  # Browser/device info
     ip_address = db.Column(db.String(45), nullable=True)  # IPv4/IPv6
+    # last_activity = db.Column(db.DateTime, default=datetime.utcnow)  # Track session activity - Temporarily disabled
     
     # Relationships
     table = db.relationship('Table', backref='sessions')

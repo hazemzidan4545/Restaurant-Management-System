@@ -1522,20 +1522,9 @@ class AddMenuItemManager {
     }
 
     showPriceCalculator() {
-        // Simple price calculator prompt
-        const cost = prompt('Enter the cost price (EGP):');
-        if (cost && !isNaN(cost)) {
-            const costPrice = parseFloat(cost);
-            const markup = prompt('Enter markup percentage (e.g., 50 for 50%):');
-            if (markup && !isNaN(markup)) {
-                const markupPercent = parseFloat(markup);
-                const sellingPrice = costPrice * (1 + markupPercent / 100);
-                document.getElementById('price').value = sellingPrice.toFixed(2);
-                this.validateField('price');
-                this.updateFormProgress();
-                RestaurantApp.showNotification('Success', `Calculated price: EGP ${sellingPrice.toFixed(2)}`, 'success');
-            }
-        }
+        // Price calculator functionality would use a proper modal instead of prompts
+        console.log('Price calculator functionality - would show modal interface');
+        // TODO: Implement proper modal-based price calculator
     }
 
     handleFormSubmit(e) {
