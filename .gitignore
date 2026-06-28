@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Flask/local runtime
+instance/
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+
+# Uploaded/generated files
+app/static/uploads/
+uploads/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
